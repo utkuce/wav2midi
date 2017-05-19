@@ -1,4 +1,14 @@
 [root]
 name = "rust_test"
 version = "0.1.0"
+dependencies = [
+ "hound 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
+[[package]]
+name = "hound"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[metadata]
+"checksum hound 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d751b836ac593fc578456297bea26218d15ef07c3086c70fca97ba5402e562ec"
