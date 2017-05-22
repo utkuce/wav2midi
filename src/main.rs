@@ -15,12 +15,9 @@ fn main() {
         .map(|sample| sample.unwrap() as f64).collect();
 
     let window_type: WindowType = WindowType::Hanning;
-    let window_size: usize =  reader.spec().sample_rate as usize;
-    let step_size: usize = 4096;
+    let window_size: usize = 4096;//reader.spec().sample_rate as usize;
+    let step_size: usize = 512;
     let mut stft = STFT::<f64>::new(window_type, window_size, step_size);
-
-    let mut spectrogram_column: Vec<f64> =
-        std::iter::repeat(0.).take(stft.output_size()).collect();
 
     let mut file = match File::create("spectrogram.csv") {
         Err(_) => panic!("couldn't create file"),
@@ -28,6 +25,10 @@ fn main() {
     };
     let mut csv_writer = csv::Writer::from_memory();
 
+    let mut spectrogram_column: Vec<f64> =
+        std::iter::repeat(0.).take(stft.output_size()).collect();
+
+    let mut count : usize = 1;
     for some_samples in (&audio_data[..]).chunks(3000) {
         stft.append_samples(some_samples);
 
@@ -37,10 +38,12 @@ fn main() {
             let frequency : usize = get_frequency(&spectrogram_column);
             let pitch : String = get_pitch(&(frequency as f64));
 
-            println!("Note:{p}, {f}Hz", p=pitch, f=frequency);
+            print!("Note:{p}, {f}Hz ", p=pitch, f=frequency);
 
-            let result = csv_writer.encode(&spectrogram_column[0..500]); 
-            assert!(result.is_ok());        
+            let result = csv_writer.encode(&spectrogram_column[..500]); 
+            assert!(result.is_ok());
+            println!("{}/{}", count, audio_data.len()/step_size - 1 );
+            count +=1;
             stft.move_to_next_column();
         }
     }
