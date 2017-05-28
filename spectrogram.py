@@ -47,13 +47,26 @@ l1, = ax2.plot(variances, '-c', label='variance')
 l2, = ax2.plot(averages, '-w', label='average amplitude')
 plt.legend(handles=[l1, l2])
 
+def local_maximas(data):
+    maximas = []
+    derivative = np.diff(data)
+    for i,v in enumerate(derivative):
+        if i+1 < len(derivative):
+            if v > 0 and derivative[i+1] < 0:
+                maximas.append(v)
+    return maximas
+
 def peaks(data):
     markers_on = []
-    derivative = np.diff(data) 
+    derivative = np.diff(data)
+    m = local_maximas(data)
+    height_threshold = np.average(m, weights=m)
     for i,v in enumerate(derivative):
         if i+1 < len(derivative) and i > 5:
-            if v > 0 and derivative[i+1] < 0 and data[i] - data[i-5] > 0.1:
+            heigh_enough = data[i] - data[i-5] > height_threshold
+            if v > 0 and derivative[i+1] < 0 and heigh_enough:
                 markers_on.append(i+1)
+         
     return markers_on
 
 smoothed_variances = np.convolve(variances, np.ones(5)/5)
@@ -62,6 +75,12 @@ smoothed_averages = np.convolve(averages, np.ones(5)/5)
 a = peaks(smoothed_variances)
 b = peaks(smoothed_averages)
 
+both_peaks = []
+for x in a:
+    if any(n in b for n in list(range(x-5,x+5))):
+        both_peaks.append(x)
+
+ax2.set_xticks(both_peaks)
 ax2.plot(smoothed_variances, '-o', markevery=a)
 ax2.plot(smoothed_averages, '-o', markevery=b)
 
@@ -78,6 +97,7 @@ fig.tight_layout()
 
 try:
     plt.get_current_fig_manager().window.state('zoomed')
+    fig.canvas.set_window_title('Music Analysis')
 except:
     pass
 
