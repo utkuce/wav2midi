@@ -1,3 +1,4 @@
 target
 *.wav
 *.csv
+__pycache__

@@ -7,3 +7,4 @@ authors = ["utku <utkuce@gmail.com>"]
 hound = "3.1.0"
 stft = "0.2.0"
 csv = "*"
+num_cpus = "0.2"
