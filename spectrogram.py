@@ -1,30 +1,31 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import csv
-
-#plt.rcParams['toolbar'] = 'None'
-
-def get_heatmap(filename):
-    with open(filename, 'r') as file:
-        reader = csv.reader(file)
-        heatmap = list(reader)
-
-    heatmap = np.array(object=heatmap, dtype=float)
-    return heatmap
+import internal_utility as iu
+import wave
 
 print('reading values...')
 
-heatmap1 = get_heatmap('rhythm.csv')
-heatmap2 = get_heatmap('pitch.csv')
+heatmap1 = iu.get_heatmap('rhythm.csv')
+heatmap2 = iu.get_heatmap('pitch.csv')
 
 print('calculating...')
 
-variances = []
-averages = []
+variances, averages = [], []
 
 for fourier in heatmap1:
     variances.append(np.var(fourier))
     averages.append(np.mean(fourier))
+
+smoothed_variances = np.convolve(variances, np.ones(5)/5)
+smoothed_averages = np.convolve(averages, np.ones(5)/5)
+
+variance_peaks = iu.peaks(smoothed_variances)
+average_peaks = iu.peaks(smoothed_averages)
+
+both_peaks = []
+for x in variance_peaks:
+    if any(n in average_peaks for n in list(range(x-5,x+5))):
+        both_peaks.append(x)
 
 #transpose
 heatmap1 = [list(x) for x in zip(*heatmap1)]
@@ -43,46 +44,12 @@ ax1.invert_yaxis()
 
 plt.xlim(xmin=0)
 
-l1, = ax2.plot(variances, '-c', label='variance')
-l2, = ax2.plot(averages, '-w', label='average amplitude')
-plt.legend(handles=[l1, l2])
-
-def local_maximas(data):
-    maximas = []
-    derivative = np.diff(data)
-    for i,v in enumerate(derivative):
-        if i+1 < len(derivative):
-            if v > 0 and derivative[i+1] < 0:
-                maximas.append(v)
-    return maximas
-
-def peaks(data):
-    markers_on = []
-    derivative = np.diff(data)
-    m = local_maximas(data)
-    height_threshold = np.average(m, weights=m)
-    for i,v in enumerate(derivative):
-        if i+1 < len(derivative) and i > 5:
-            heigh_enough = data[i] - data[i-5] > height_threshold
-            if v > 0 and derivative[i+1] < 0 and heigh_enough:
-                markers_on.append(i+1)
-         
-    return markers_on
-
-smoothed_variances = np.convolve(variances, np.ones(5)/5)
-smoothed_averages = np.convolve(averages, np.ones(5)/5)
-
-a = peaks(smoothed_variances)
-b = peaks(smoothed_averages)
-
-both_peaks = []
-for x in a:
-    if any(n in b for n in list(range(x-5,x+5))):
-        both_peaks.append(x)
-
+ax2.plot(variances, '-c')
+ax2.plot(averages, '-w')
 ax2.set_xticks(both_peaks)
-ax2.plot(smoothed_variances, '-o', markevery=a)
-ax2.plot(smoothed_averages, '-o', markevery=b)
+l1, = ax2.plot(smoothed_variances, '-o', markevery=variance_peaks, label='varince')
+l2, = ax2.plot(smoothed_averages, '-o', markevery=average_peaks, label='averages')
+plt.legend(handles=[l1, l2])
 
 ax3 = fig.add_subplot(2,1,2)
 ax3.set_title('Window Size: {} Step size: {}'.format(44100, 512))
@@ -101,4 +68,5 @@ try:
 except:
     pass
 
+print ('done.')
 plt.show()
