@@ -12,6 +12,9 @@ use std::fs::File;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
+type Column = Vec<f64>;
+type Spectrogram = Vec<Column>;
+
 fn main() {
 
     let mut reader = hound::WavReader::open("tetris2.wav").unwrap();
@@ -34,21 +37,23 @@ fn main() {
     //write_spectrogram_data(&audio_data, reader.spec().sample_rate, 512, "pitch.csv");
 }
 
-fn get_spectrogram(audio_data : &Vec<f64>, window_size: usize, step_size: usize) -> Vec<Vec<f64>>
-{
-    let mut spectrogram : Vec<Vec<f64>> = Vec::new();
- 
+fn get_spectrogram(audio_data : &Vec<f64>, window_size: usize, step_size: usize) -> Spectrogram
+{ 
     let cpu_count = num_cpus::get();
     let audio_len = audio_data.len();
 
     let mut thread_handles : Vec<thread::JoinHandle<_>> = Vec::new();
+    let sub_spects = Arc::new(Mutex::new(vec![Spectrogram::new(); cpu_count]));
 
-    for audio_slice in audio_data.chunks(audio_len/cpu_count) 
+    for (index,audio_slice) in audio_data.chunks(audio_len/cpu_count).enumerate() 
     {
-        //spectrogram.append(&mut sub_spect(&audio_slice.to_vec(), window_size, step_size));
         let slice = audio_slice.to_vec().clone();
-        let handle : thread::JoinHandle<_> = thread::spawn( move || {
-            sub_spect(&slice, window_size, step_size);
+        let sub_spects = sub_spects.clone();
+        let handle : thread::JoinHandle<_> = thread::spawn(move || 
+        {
+            let s = sub_spect(&slice, window_size, step_size);
+            let mut sub_spects = sub_spects.lock().unwrap();
+            sub_spects[index] = s; 
         });
 
         thread_handles.push(handle);
@@ -58,14 +63,21 @@ fn get_spectrogram(audio_data : &Vec<f64>, window_size: usize, step_size: usize)
         assert!(handle.join().is_ok());
     }
 
-    spectrogram.shrink_to_fit();
-    return spectrogram;
+    let mut final_spectrogram : Spectrogram = Vec::new();
+    let sub_spects = sub_spects.lock().unwrap();
+
+    for part in sub_spects.iter() {
+        let mut part = part.clone();
+        final_spectrogram.append(&mut part);
+    }
+
+    return final_spectrogram;
 }
 
-fn sub_spect(audio_data : &Vec<f64>, window_size: usize, step_size: usize) -> Vec<Vec<f64>>
+fn sub_spect(audio_data : &Vec<f64>, window_size: usize, step_size: usize) -> Spectrogram
 {
     let spectrogram_len = (audio_data.len()-(window_size-step_size))/step_size;
-    let mut spectrogram : Vec<Vec<f64>> = vec![Vec::new(); spectrogram_len];
+    let mut spectrogram : Spectrogram = vec![Vec::new(); spectrogram_len];
     let mut stft = STFT::<f64>::new(WindowType::Hanning, window_size, step_size);
 
     stft.append_samples(audio_data);
@@ -73,7 +85,7 @@ fn sub_spect(audio_data : &Vec<f64>, window_size: usize, step_size: usize) -> Ve
     let mut column_number = 0;
     while stft.contains_enough_to_compute() 
     {
-        let mut spectrogram_column: Vec<f64> =
+        let mut spectrogram_column: Column =
             std::iter::repeat(0.).take(stft.output_size()).collect();
         stft.compute_column(&mut spectrogram_column[..]);
 
