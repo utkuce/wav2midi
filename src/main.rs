@@ -36,15 +36,26 @@ fn main() {
 
 fn get_spectrogram(audio_data : &Vec<f64>, window_size: usize, step_size: usize) -> Vec<Vec<f64>>
 {
-    let spectrogram_len = (audio_data.len()-(window_size-step_size))/step_size;
     let mut spectrogram : Vec<Vec<f64>> = Vec::new();
  
     let cpu_count = num_cpus::get();
     let audio_len = audio_data.len();
-    
+
+    let mut thread_handles : Vec<thread::JoinHandle<_>> = Vec::new();
+
     for audio_slice in audio_data.chunks(audio_len/cpu_count) 
     {
-        spectrogram.append(&mut sub_spect(&audio_slice.to_vec(), window_size, step_size));
+        //spectrogram.append(&mut sub_spect(&audio_slice.to_vec(), window_size, step_size));
+        let slice = audio_slice.to_vec().clone();
+        let handle : thread::JoinHandle<_> = thread::spawn( move || {
+            sub_spect(&slice, window_size, step_size);
+        });
+
+        thread_handles.push(handle);
+    }
+
+    for handle in thread_handles {
+        assert!(handle.join().is_ok());
     }
 
     spectrogram.shrink_to_fit();
