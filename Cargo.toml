@@ -3,8 +3,12 @@ name = "rust_test"
 version = "0.1.0"
 authors = ["utku <utkuce@gmail.com>"]
 
+[lib]
+name = "stft_rust"
+path = "src/main.rs"
+crate-type = ["dylib"]
+
 [dependencies]
-hound = "3.1.0"
-stft = "0.2.0"
-csv = "*"
+hound = "3.1.0" # read wav file
+stft = "0.2.0" # short time fourier transform
 num_cpus = "0.2"

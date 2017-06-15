@@ -1,40 +1,49 @@
 extern crate hound;
 extern crate stft;
-extern crate csv;
 extern crate num_cpus;
 
 use stft::{STFT, WindowType};
 use std::f64;
 
-use std::io::prelude::Write;
-use std::fs::File;
-
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-type Column = Vec<f64>;
+use std::os::raw;
+use std::ffi::CStr;
+
+type Column = Vec<raw::c_double>;
 type Spectrogram = Vec<Column>;
 
-fn main() {
+fn main() {}
 
-    let mut reader = hound::WavReader::open("tetris2.wav").unwrap();
-    let audio_data : Vec<f64> = 
-        reader.samples::<i16>().map(|sample| sample.unwrap() as f64).collect();    
+#[repr(C)]
+pub struct FFI_Spectrogram {
+    data : *const *const raw::c_double,
+    shape : (u64, u64),
+}
 
-    let mut file = match File::create("rhythm.csv") {
-        Err(_) => panic!("couldn't create file"),
-        Ok(file) => file,
-    };
+#[no_mangle]
+pub extern fn spectrogram( file_name: *const raw::c_char, 
+                           window_size: raw::c_uint, 
+                           step_size : raw::c_uint ) -> *const raw::c_void
+{
+    unsafe
+    {
+        let name: String = CStr::from_ptr(file_name).to_string_lossy().into_owned();
+        let mut reader = hound::WavReader::open(name).unwrap();
+        let audio_data : Vec<f64> = reader.samples::<i16>().map(|sample| sample.unwrap() as f64).collect();  
+        
+        let s = get_spectrogram(&audio_data, window_size as usize, step_size as usize);
+        let p_array : Vec<*const raw::c_double> = 
+            s.iter().map(|c| Box::into_raw(c.clone().into_boxed_slice()) as *const raw::c_double).collect();
+        
+        let spect = FFI_Spectrogram {
+            shape : (s.len() as u64, s[0].len() as u64),
+            data : Box::into_raw(p_array.into_boxed_slice()) as *const *const raw::c_double
+        };
 
-    let spectrogram = get_spectrogram(&audio_data, 4096, 512);
-
-    let mut csv_writer = csv::Writer::from_memory();
-    for column in spectrogram {
-        assert!(csv_writer.encode(column).is_ok());
+        Box::into_raw(Box::new(spect)) as *const raw::c_void
     }
-    assert!(file.write_all(csv_writer.as_bytes()).is_ok());
-
-    //write_spectrogram_data(&audio_data, reader.spec().sample_rate, 512, "pitch.csv");
 }
 
 fn get_spectrogram(audio_data : &Vec<f64>, window_size: usize, step_size: usize) -> Spectrogram
@@ -47,7 +56,7 @@ fn get_spectrogram(audio_data : &Vec<f64>, window_size: usize, step_size: usize)
 
     for (index,audio_slice) in audio_data.chunks(audio_len/cpu_count).enumerate() 
     {
-        let slice = audio_slice.to_vec().clone();
+        let slice = audio_slice.to_vec();
         let sub_spects = sub_spects.clone();
         let handle : thread::JoinHandle<_> = thread::spawn(move || 
         {
@@ -88,11 +97,10 @@ fn sub_spect(audio_data : &Vec<f64>, window_size: usize, step_size: usize) -> Sp
         let mut spectrogram_column: Column =
             std::iter::repeat(0.).take(stft.output_size()).collect();
         stft.compute_column(&mut spectrogram_column[..]);
-
-        println!("{}/{}", column_number, spectrogram_len-1);
-        spectrogram[column_number] = spectrogram_column[..1500].to_vec();        
+        spectrogram[column_number] = spectrogram_column[..1500].to_vec();
         column_number += 1;
         
+        //println!("{}", column_number);
         stft.move_to_next_column();
     }
 

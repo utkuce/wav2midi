@@ -1,11 +1,31 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import internal_utility as iu
-import wave
+from ctypes import *
+
+class C_Tuple(Structure):
+    _fields_ = [("x", c_uint64), ("y", c_uint64)]
+
+class FFI_Spectrogram(Structure):
+    _fields_ = [("data", POINTER(POINTER(c_double))), ("shape", C_Tuple)]
+
+stft = cdll.LoadLibrary('target\debug\stft_rust.dll')
+stft.spectrogram.argtypes = [c_char_p, c_uint, c_uint]
+stft.spectrogram.restype = c_void_p
+
+result = stft.spectrogram('tetris2.wav'.encode('UTF-8'), 4096, 512)
+result = cast(result, POINTER(FFI_Spectrogram)).contents
+
+heatmap = []
+
+for x in range(0, result.shape.x):
+    array_pointer = cast(result.data[x], POINTER(c_double*result.shape.y))
+    a = np.frombuffer(array_pointer.contents)
+    heatmap.append(a)
 
 print('reading values...')
 
-heatmap1 = iu.get_heatmap('rhythm.csv')
+heatmap1 = heatmap# iu.get_heatmap('rhythm.csv')
 heatmap2 = iu.get_heatmap('pitch.csv')
 
 print('calculating...')
