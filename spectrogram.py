@@ -66,3 +66,5 @@ except:
     pass
 
 plt.show()
+
+iu.free_spect()

@@ -10,6 +10,7 @@ use std::thread;
 
 use std::os::raw;
 use std::ffi::CStr;
+use std::slice;
 
 type Column = Vec<raw::c_double>;
 type Spectrogram = Vec<Column>;
@@ -41,6 +42,19 @@ pub extern fn spectrogram( file_name: *const raw::c_char,
         };
 
         Box::into_raw(Box::new(spect)) as *const raw::c_void
+    }
+}
+
+#[no_mangle]
+pub extern fn clean( ptr : *const raw::c_void) 
+{
+    unsafe 
+    { 
+        let ffi_spect = Box::from_raw(ptr as *mut FFI_Spectrogram);
+        let mut data = slice::from_raw_parts(ffi_spect.data, ffi_spect.shape.0 as usize);
+        for x in 0..data.len() {
+            Box::from_raw(data[x] as *mut f64);
+        }
     }
 }
 
@@ -95,7 +109,7 @@ fn sub_spect(audio_data : &Vec<f64>, window_size: usize, step_size: usize) -> Sp
         let mut spectrogram_column: Column =
             std::iter::repeat(0.).take(stft.output_size()).collect();
         stft.compute_column(&mut spectrogram_column[..]);
-        spectrogram[column_number] = spectrogram_column[..1500].to_vec();
+        spectrogram[column_number] = spectrogram_column[..1500].to_vec();;
         column_number += 1;
         
         //println!("{}", column_number);

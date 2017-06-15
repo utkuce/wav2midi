@@ -11,11 +11,14 @@ class FFI_Spectrogram(Structure):
 stft_rs = cdll.LoadLibrary('target\debug\stft_rust.dll')
 stft_rs.spectrogram.argtypes = [c_char_p, c_uint, c_uint]
 stft_rs.spectrogram.restype = c_void_p
+stft_rs.clean.argtypes = [c_void_p]
+
+ptr = None
 
 def stft(fileName, windowSize, stepSize):
 
-    result = stft_rs.spectrogram(fileName.encode('UTF-8'), windowSize, stepSize)
-    result = cast(result, POINTER(FFI_Spectrogram)).contents
+    ptr = stft_rs.spectrogram(fileName.encode('UTF-8'), windowSize, stepSize)
+    result = cast(ptr, POINTER(FFI_Spectrogram)).contents
 
     data = []
 
@@ -23,8 +26,11 @@ def stft(fileName, windowSize, stepSize):
         array_pointer = cast(result.data[x], POINTER(c_double*result.shape.y))
         a = np.frombuffer(array_pointer.contents)
         data.append(a)
-
+    
     return data
+
+def free_spect():
+    stft_rs.clean(cast(ptr, c_void_p))
 
 def get_heatmap(filename):
 
