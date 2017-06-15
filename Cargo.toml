@@ -5,7 +5,6 @@ authors = ["utku <utkuce@gmail.com>"]
 
 [lib]
 name = "stft_rust"
-path = "src/main.rs"
 crate-type = ["dylib"]
 
 [dependencies]
