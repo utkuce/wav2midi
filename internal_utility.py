@@ -24,13 +24,11 @@ def stft(fileName, windowSize, stepSize):
 
     for x in range(0, result.shape.x):
         array_pointer = cast(result.data[x], POINTER(c_double*result.shape.y))
-        a = np.frombuffer(array_pointer.contents)
+        a = np.fromiter(array_pointer.contents, dtype=float)
         data.append(a)
     
-    return data
-
-def free_spect():
     stft_rs.clean(cast(ptr, c_void_p))
+    return data    
 
 def get_heatmap(filename):
 

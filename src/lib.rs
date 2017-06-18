@@ -51,9 +51,9 @@ pub extern fn clean( ptr : *const raw::c_void)
     unsafe 
     { 
         let ffi_spect = Box::from_raw(ptr as *mut FFI_Spectrogram);
-        let mut data = slice::from_raw_parts(ffi_spect.data, ffi_spect.shape.0 as usize);
+        let data = slice::from_raw_parts(ffi_spect.data, ffi_spect.shape.0 as usize);
         for x in 0..data.len() {
-            Box::from_raw(data[x] as *mut f64);
+            Box::from_raw(data[x] as *mut f64); 
         }
     }
 }
