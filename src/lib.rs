@@ -62,22 +62,27 @@ fn get_spectrogram(audio_data : &Vec<f64>, window_size: usize, step_size: usize)
 { 
     let cpu_count = num_cpus::get();
     let audio_len = audio_data.len();
-
+    
     let mut thread_handles : Vec<thread::JoinHandle<_>> = Vec::new();
     let sub_spects = Arc::new(Mutex::new(vec![Spectrogram::new(); cpu_count]));
-
+    
+    let overlap_size = window_size-step_size;    
+    let mut slice : Vec<f64> = Vec::new();
     for (index,audio_slice) in audio_data.chunks(audio_len/cpu_count).enumerate() 
     {
-        let slice = audio_slice.to_vec();
+        slice.extend_from_slice(audio_slice);
         let sub_spects = sub_spects.clone();
+        let s = slice.clone();
         let handle : thread::JoinHandle<_> = thread::spawn(move || 
         {
-            let s = sub_spect(&slice, window_size, step_size);
+            let s = sub_spect(&s, window_size, step_size);
             let mut sub_spects = sub_spects.lock().unwrap();
             sub_spects[index] = s; 
         });
 
         thread_handles.push(handle);
+        let slice_len = audio_slice.len()-1;
+        slice = audio_slice[slice_len-overlap_size..slice_len].to_vec();
     }
 
     for handle in thread_handles {
