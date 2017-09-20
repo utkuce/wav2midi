@@ -9,7 +9,8 @@ use std::thread;
 type Column = Vec<::std::os::raw::c_double>;
 type Spectrogram = Vec<Column>;
 
-pub fn get_spectrogram(audio_data : &Vec<f64>, window_size: usize, step_size: usize) -> Spectrogram
+pub fn get_spectrogram(audio_data : &Vec<f64>, window_size: usize, step_size: usize,
+                       highpass: usize, lowpass: usize) -> Spectrogram
 { 
     let cpu_count = num_cpus::get();
     let audio_len = audio_data.len();
@@ -24,9 +25,10 @@ pub fn get_spectrogram(audio_data : &Vec<f64>, window_size: usize, step_size: us
     {
         slice.extend_from_slice(audio_slice);
         let sub_spects = sub_spects.clone();
-        let s = slice.clone();
+        let mut s = slice.clone();
         let handle : thread::JoinHandle<_> = thread::spawn(move || 
         {
+            s = ::filters::apply_filters(&s, highpass, lowpass);
             let s = sub_spect(&s, window_size, step_size);
             let mut sub_spects = sub_spects.lock().unwrap();
             sub_spects[index] = s; 

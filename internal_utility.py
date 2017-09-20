@@ -1,6 +1,11 @@
-import csv
 import numpy as np
 from ctypes import *
+
+class Attributes():
+    def __init__(self, windowSize, stepSize, bandpass):
+        self.windowSize = windowSize
+        self.stepSize = stepSize
+        self.bandpass = bandpass
 
 class C_Tuple(Structure):
     _fields_ = [("x", c_uint64), ("y", c_uint64)]
@@ -15,9 +20,10 @@ stft_rs.clean.argtypes = [c_void_p]
 
 ptr = None
 
-def stft(fileName, windowSize, stepSize):
+def stft(fileName, attribute):
 
-    ptr = stft_rs.spectrogram(fileName.encode('UTF-8'), windowSize, stepSize)
+    ptr = stft_rs.spectrogram(fileName.encode('UTF-8'), attribute.windowSize, attribute.stepSize, 
+                              attribute.bandpass[0], attribute.bandpass[1])
     result = cast(ptr, POINTER(FFI_Spectrogram)).contents
 
     data = []
@@ -27,17 +33,8 @@ def stft(fileName, windowSize, stepSize):
         a = np.fromiter(array_pointer.contents, dtype=float)
         data.append(a)
     
-    stft_rs.clean(cast(ptr, c_void_p))
+    stft_rs.clean(cast(ptr, c_void_p)) #data is cloned, original pointer can be deleted
     return data    
-
-def get_heatmap(filename):
-
-    with open(filename, 'r') as file:
-        reader = csv.reader(file)
-        heatmap = list(reader)
-
-    heatmap = np.array(object=heatmap, dtype=float)
-    return heatmap
 
 def local_maximas(data):
 
