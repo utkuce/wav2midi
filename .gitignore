@@ -2,3 +2,4 @@ target
 *.wav
 *.csv
 __pycache__
+br.bat
