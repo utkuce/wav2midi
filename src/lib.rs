@@ -14,23 +14,15 @@ pub struct FFI_Spectrogram {
 }
 
 #[no_mangle]
-pub extern fn spectrogram( file_name: *const raw::c_char,  window_size: raw::c_uint, step_size : raw::c_uint,
-                           highpass: usize, lowpass: usize) -> *const raw::c_void
+pub extern fn spectrogram( file_name: *const raw::c_char, window_size: raw::c_uint, step_size : raw::c_uint) -> *const raw::c_void
 {
     unsafe
     {
         let name: String = std::ffi::CStr::from_ptr(file_name).to_string_lossy().into_owned();
         let mut reader = hound::WavReader::open(name).unwrap();
         let audio_data : Vec<f64> = reader.samples::<i16>().map(|sample| sample.unwrap() as f64).collect();
-
-        print!("STFT: {{ Window Size: {} Step Size: {} }}, audio: {{ ", window_size, step_size);
-        print!("Duration: {} seconds, ", reader.duration() / reader.spec().sample_rate);
-        print!("Sample Rate: {}, ", reader.spec().sample_rate);
-        print!("Channels: {}, ", reader.spec().channels);
-        println!("Bit Depth: {} }}", reader.spec().bits_per_sample);        
         
-        let s = spectrogram::get_spectrogram(&audio_data, window_size as usize, step_size as usize,
-                                             highpass, lowpass);
+        let s = spectrogram::get_spectrogram(&audio_data, window_size as usize, step_size as usize);
         let p_array : Vec<*const raw::c_double> = 
             s.iter().map(|c| Box::into_raw(c.clone().into_boxed_slice()) as *const raw::c_double).collect();
         

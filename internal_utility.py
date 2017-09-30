@@ -1,11 +1,11 @@
+from __future__ import division
 import numpy as np
 from ctypes import *
 
-class Attributes():
-    def __init__(self, windowSize, stepSize, bandpass):
+class STFT_Params():
+    def __init__(self, windowSize, stepSize):
         self.windowSize = windowSize
         self.stepSize = stepSize
-        self.bandpass = bandpass
 
 class C_Tuple(Structure):
     _fields_ = [("x", c_uint64), ("y", c_uint64)]
@@ -20,10 +20,9 @@ stft_rs.clean.argtypes = [c_void_p]
 
 ptr = None
 
-def stft(fileName, attribute):
+def stft(fileName, params):
 
-    ptr = stft_rs.spectrogram(fileName.encode('UTF-8'), attribute.windowSize, attribute.stepSize, 
-                              attribute.bandpass[0], attribute.bandpass[1])
+    ptr = stft_rs.spectrogram(fileName.encode('UTF-8'), params.windowSize, params.stepSize)
     result = cast(ptr, POINTER(FFI_Spectrogram)).contents
 
     data = []
@@ -34,32 +33,44 @@ def stft(fileName, attribute):
         data.append(a)
     
     stft_rs.clean(cast(ptr, c_void_p)) #data is cloned, original pointer can be deleted
-    return data    
+    return np.asarray(data)
 
-def local_maximas(data):
+def combine(narrowband, wideband):
+
+    combined = np.ndarray(shape=wideband.shape)
+    scale = np.divide(wideband.shape, narrowband.shape)
+    for (x,y), value in np.ndenumerate(wideband):
+        combined[x,y] = (value * narrowband[int(x/scale[0]), int(y/scale[1])])**0.5
+    
+    return combined
+
+def downsample(data, rate):    
+    return data.reshape( (-1, rate) ).mean(axis=1)
+
+def hps(data, m_rate):
+    hps = np.copy(data)
+    for i in range(m_rate, 1, -1):
+        downsampled = []
+        for row in data:
+            while len(row) % i != 0:
+                row = np.append(row,0)
+            downsampled.append(downsample(row, i))
+        for (x,y), value in np.ndenumerate(downsampled):
+            hps[x,y] *= value
+
+    return hps
+
+def smooth(dataSet):
+    w = 25
+    return np.convolve(dataSet, np.ones(w)/w)
+
+def maximas(data):
 
     maximas = []
     derivative = np.diff(data)
 
-    for i,v in enumerate(derivative):
-        if i+1 < len(derivative):
-            if v > 0 and derivative[i+1] < 0:
-                maximas.append(v)
+    for i in range (0, len(data)-2):
+        if derivative[i] > 0 and derivative[i+1] < 0:
+            maximas.append(i)
 
     return maximas
-
-def peaks(data):
-
-    markers_on = []
-
-    derivative = np.diff(data)
-    m = local_maximas(data)
-    height_threshold = np.average(m, weights=m)
-    
-    for i,v in enumerate(derivative):
-        if i+1 < len(derivative) and i > 5:
-            heigh_enough = data[i] - data[i-5] > height_threshold
-            if v > 0 and derivative[i+1] < 0 and heigh_enough:
-                markers_on.append(i+1)
-         
-    return markers_on
