@@ -3,3 +3,4 @@ target
 *.csv
 __pycache__
 br.bat
+testaudio

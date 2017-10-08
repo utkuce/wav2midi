@@ -35,6 +35,12 @@ def stft(fileName, params):
     stft_rs.clean(cast(ptr, c_void_p)) #data is cloned, original pointer can be deleted
     return np.asarray(data)
 
+def print_audio_details(fileName):
+    stft_rs.print_audio_details(fileName.encode('UTF-8'))
+
+def print_song(array):
+    stft_rs.print_song((c_double * len(array))(*array), len(array))
+
 def combine(narrowband, wideband):
 
     combined = np.ndarray(shape=wideband.shape)
@@ -48,6 +54,7 @@ def downsample(data, rate):
     return data.reshape( (-1, rate) ).mean(axis=1)
 
 def hps(data, m_rate):
+    
     hps = np.copy(data)
     for i in range(m_rate, 1, -1):
         downsampled = []
@@ -56,12 +63,11 @@ def hps(data, m_rate):
                 row = np.append(row,0)
             downsampled.append(downsample(row, i))
         for (x,y), value in np.ndenumerate(downsampled):
-            hps[x,y] *= value
+            hps[x,y] += value
 
     return hps
 
-def smooth(dataSet):
-    w = 25
+def smooth(dataSet, w):
     return np.convolve(dataSet, np.ones(w)/w)
 
 def maximas(data):
