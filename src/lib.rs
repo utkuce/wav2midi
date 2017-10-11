@@ -1,5 +1,6 @@
 extern crate hound;
 extern crate synthrs;
+extern crate rimd;
 
 use std::f64;
 use std::os::raw;
@@ -62,7 +63,15 @@ pub extern fn print_audio_details(file_name: *const raw::c_char)
 }
 
 #[no_mangle]
-pub extern fn print_song(frequencies: *const raw::c_double, len: raw::c_uint)
+pub extern fn write_midi(frequencies: *const raw::c_double, len: raw::c_uint, file_name: *const raw::c_char)
 {
-    println!("{}", postprocess::get_song(frequencies, len));
+    let name: String = unsafe { std::ffi::CStr::from_ptr(file_name).to_string_lossy().into_owned() };
+    let reader = hound::WavReader::open(name).unwrap();
+
+    // division = 1 beat = 1 seconds
+    let seconds = reader.duration() as f64 / reader.spec().sample_rate as f64;
+    let division : i16 = (len as f64 / seconds) as i16;
+    println!("division: {}, seconds: {}", division, seconds);
+    let notes = postprocess::get_notes(frequencies, len);
+    postprocess::write_midi(notes, division);
 }

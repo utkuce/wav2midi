@@ -38,8 +38,8 @@ def stft(fileName, params):
 def print_audio_details(fileName):
     stft_rs.print_audio_details(fileName.encode('UTF-8'))
 
-def print_song(array):
-    stft_rs.print_song((c_double * len(array))(*array), len(array))
+def write_midi(array, fileName):
+    stft_rs.write_midi((c_double * len(array))(*array), len(array), fileName.encode('UTF-8'))
 
 def combine(narrowband, wideband):
 

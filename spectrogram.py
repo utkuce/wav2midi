@@ -33,7 +33,7 @@ print ('calculating harmonic product spectrum...')
 hps = iu.hps(combined, 6)
 
 frequencies = [np.argmax(n) for n in hps]
-iu.print_song(frequencies)
+iu.write_midi(frequencies, sys.argv[1])
 
 print ('drawing...')
 
