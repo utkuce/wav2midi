@@ -62,17 +62,25 @@ pub fn write_midi(song: Song)
     let mut previous_duration = 0;
     for note in song.notes.iter() 
     {
-        events.push( TrackEvent { 
-            event: Event::Midi(MidiMessage::note_on(note.midi, 125, 0)), 
-            vtime: previous_duration
-        } );
+        if note.name != "R" 
+        {
+            events.push( TrackEvent { 
+                event: Event::Midi(MidiMessage::note_on(note.midi, 125, 0)), 
+                vtime: previous_duration
+            } );
         
-        events.push( TrackEvent { 
-            event: Event::Midi(MidiMessage::note_off(note.midi, 125, 0)), 
-            vtime: note.duration 
-        } );
+            events.push( TrackEvent { 
+                event: Event::Midi(MidiMessage::note_off(note.midi, 125, 0)), 
+                vtime: note.duration 
+            } );
+        }
 
-        previous_duration = note.duration as u64;
+        if note.name == "R" { 
+            previous_duration += note.duration;
+        } else {
+            previous_duration = note.duration as u64;
+        }
+
     }
 
     let tracks = vec![ Track {copyright: None, name: None, events: events} ];
