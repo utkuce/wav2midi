@@ -4,14 +4,14 @@ use rimd::{ TrackEvent, Event, MidiMessage, SMFWriter, SMFFormat, Track, SMF};
 use std::path::Path;
 
 pub struct Note {name: String, midi: u8, duration: u64}
-pub struct Song{notes: Vec<Note>, length: u64, name: String}
+pub struct Song{pub notes: Vec<Note>, pub division: i16, pub name: String}
 
 impl fmt::Display for Song {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let all_notes : String = 
             self.notes.iter().fold(String::new(), |s, n| 
                 format!("{}{}", s, format!("{}[{}] ", n.name, n.duration)));
-        write!(f, "{}", all_notes)
+        write!(f, "{}: {}", self.name, all_notes)
     }
 }
 
@@ -55,20 +55,20 @@ pub fn get_notes(frequencies: *const raw::c_double, len: raw::c_uint) -> Vec<Not
     return notes;
 }
 
-pub fn write_midi(song: Vec<Note>, division: i16)
+pub fn write_midi(song: Song)
 {   
     let mut events : Vec<TrackEvent> = Vec::new();
 
     let mut previous_duration = 0;
-    for note in song.iter() 
+    for note in song.notes.iter() 
     {
         events.push( TrackEvent { 
-            event: Event::Midi(MidiMessage::note_on(note.midi, 100, 0)), 
+            event: Event::Midi(MidiMessage::note_on(note.midi, 125, 0)), 
             vtime: previous_duration
         } );
         
         events.push( TrackEvent { 
-            event: Event::Midi(MidiMessage::note_off(note.midi, 100, 0)), 
+            event: Event::Midi(MidiMessage::note_off(note.midi, 125, 0)), 
             vtime: note.duration 
         } );
 
@@ -76,7 +76,9 @@ pub fn write_midi(song: Vec<Note>, division: i16)
     }
 
     let tracks = vec![ Track {copyright: None, name: None, events: events} ];
-    let smf = SMF {format: SMFFormat::Single, tracks: tracks, division: division};
+    let smf = SMF {format: SMFFormat::Single, tracks: tracks, division: song.division};
     let writer = SMFWriter::from_smf(smf);
-    let result = writer.write_to_file(Path::new("test1.mid"));
+ 
+    let result = writer.write_to_file(Path::new(format!("{}{}", song.name,".mid").as_str()));
+    result.unwrap();
 }

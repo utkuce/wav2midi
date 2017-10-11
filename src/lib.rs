@@ -4,6 +4,7 @@ extern crate rimd;
 
 use std::f64;
 use std::os::raw;
+use std::path::Path;
 
 mod spectrogram;
 mod filters;
@@ -66,12 +67,16 @@ pub extern fn print_audio_details(file_name: *const raw::c_char)
 pub extern fn write_midi(frequencies: *const raw::c_double, len: raw::c_uint, file_name: *const raw::c_char)
 {
     let name: String = unsafe { std::ffi::CStr::from_ptr(file_name).to_string_lossy().into_owned() };
-    let reader = hound::WavReader::open(name).unwrap();
+    let reader = hound::WavReader::open(name.clone()).unwrap();
 
     // division = 1 beat = 1 seconds
     let seconds = reader.duration() as f64 / reader.spec().sample_rate as f64;
     let division : i16 = (len as f64 / seconds) as i16;
-    println!("division: {}, seconds: {}", division, seconds);
     let notes = postprocess::get_notes(frequencies, len);
-    postprocess::write_midi(notes, division);
+    
+    let n = String::from(Path::new(name.as_str()).file_stem().unwrap().to_str().unwrap());
+    let song = postprocess::Song {notes: notes, name: n, division: division};
+
+    println!("{}", song);
+    postprocess::write_midi(song);
 }
