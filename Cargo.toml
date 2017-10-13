@@ -13,5 +13,9 @@ stft = "0.2.0" # short time fourier transform
 num_cpus = "0.2" # parallel calculation
 rimd = "0.0.1" # midi
 
+arrayfire = "3.5.0" # gpu acceleration
+num-complex = "0.1.40"
+apodize = "*" # windowing function
+
 [dependencies.synthrs]
 git = "https://github.com/gyng/synthrs" # filters
