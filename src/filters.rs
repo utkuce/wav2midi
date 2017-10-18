@@ -1,17 +1,10 @@
-use synthrs::filter::{convolve, cutoff_from_frequency, bandpass_filter, highpass_filter};
+extern crate synthrs;
+use self::synthrs::filter::{cutoff_from_frequency, highpass_filter};
+use arrayfire::{Array, Dim4, convolve1, ConvMode, ConvDomain};
 
-/*
-pub fn bandpass(audio_data: &Vec<f64>, h: usize, l: usize) -> Vec<f64>
+pub fn highpass(signal: Array, h: usize) -> Array
 {
-    let highpass = cutoff_from_frequency(h as f64, 44100);
-    let lowpass = cutoff_from_frequency(l as f64, 44100);
-    let bandpass = bandpass_filter(highpass, lowpass, 0.01);
-    convolve(&bandpass, &audio_data)
-}
-*/
-
-pub fn highpass(audio_data: &Vec<f64>, h: usize) -> Vec<f64>
-{
-    let highpass = highpass_filter(cutoff_from_frequency(h as f64, 44100), 0.01);
-    convolve(&highpass, &audio_data)
+    let highpass = highpass_filter(cutoff_from_frequency(h as f64, 44100), 0.01); 
+    let filter : Array = Array::new(&highpass, Dim4::new(&[highpass.len() as u64,1,1,1]));
+    convolve1(&signal, &filter, ConvMode::DEFAULT, ConvDomain::FREQUENCY)
 }
