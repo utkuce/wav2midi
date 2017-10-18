@@ -1,6 +1,13 @@
+#![feature(step_by)]
+#![allow(dead_code)]
+#![allow(deprecated)]
+#![feature(use_extern_macros)]
+
 extern crate hound;
-extern crate synthrs;
-extern crate rimd;
+extern crate arrayfire;
+
+use arrayfire::{Array, Dim4, Backend, set_backend};
+use std::collections::HashMap;
 
 use std::f64;
 use std::os::raw;
@@ -16,28 +23,55 @@ pub struct FFI_Spectrogram {
     shape : (u64, u64),
 }
 
-#[no_mangle]
-pub extern fn spectrogram( file_name: *const raw::c_char, 
-                           window_size: raw::c_uint, step_size : raw::c_uint) -> *const raw::c_void
-{
-    unsafe
-    {
-        let name: String = std::ffi::CStr::from_ptr(file_name).to_string_lossy().into_owned();
-        let mut reader = hound::WavReader::open(name).unwrap();
-        let audio_data : Vec<f64> = 
-            reader.samples::<i16>().map(|sample| sample.unwrap() as f64).collect();
-        
-        let s = spectrogram::get_spectrogram(&audio_data, window_size as usize, step_size as usize);
-        let p_array : Vec<*const raw::c_double> = 
-            s.iter().map(|c| Box::into_raw(c.clone().into_boxed_slice()) as *const raw::c_double).collect();
-        
-        let spect = FFI_Spectrogram {
-            shape : (s.len() as u64, s[0].len() as u64),
-            data : Box::into_raw(p_array.into_boxed_slice()) as *const *const raw::c_double
-        };
+type Spectrogram = Vec<Array>;
 
-        Box::into_raw(Box::new(spect)) as *const raw::c_void
-    }
+pub struct AudioFile {
+    name : String,
+    data : Array,
+    spectrograms : Option<HashMap<String, Spectrogram>>,
+    max_frequncies : Option<Array>, 
+}
+
+#[no_mangle]
+pub fn analyze(file_name: *const raw::c_char ) -> *const raw::c_void
+{
+    println!("reading file...");
+    let name: String = unsafe{std::ffi::CStr::from_ptr(file_name)}.to_string_lossy().into_owned();
+    let mut reader = hound::WavReader::open(name.clone()).unwrap();
+    let data : Vec<f64> = reader.samples::<i16>().map(|sample| sample.unwrap() as f64).collect();
+    let mut data_af = Array::new(&data, Dim4::new(&[data.len() as u64,1,1,1])); 
+    
+    //set_backend(Backend::CUDA);
+
+    let mut spectrograms : HashMap<String, Spectrogram> = HashMap::new();
+
+    println!("applying filters...");
+    data_af = ::filters::highpass(data_af, 200);
+
+    println!("calculating narrowband spectrogram...");
+    let narrowband = spectrogram::get_spectrogram(data_af.clone(), 4096, 256);
+    spectrograms.insert(String::from("narrowband"), narrowband.clone());
+
+    println!("calculating wideband spectrogram...");
+    let wideband = spectrogram::get_spectrogram(data_af, 44100, 2048);
+    spectrograms.insert(String::from("wideband"), wideband.clone());  
+
+    println!("combining spectorgrams...");
+    let combined = spectrogram::combine(narrowband, wideband);
+    spectrograms.insert(String::from("combined"), combined.clone()); 
+
+    let s = spectrogram::to_host(combined);
+    let p_array : Vec<*const raw::c_double> = 
+        s.iter().map(|c| Box::into_raw(c.clone().into_boxed_slice()) as *const raw::c_double).collect();
+        
+    let spect = FFI_Spectrogram {
+        shape : (s.len() as u64, s[0].len() as u64),
+        data : Box::into_raw(p_array.into_boxed_slice()) as *const *const raw::c_double
+    };
+
+    Box::into_raw(Box::new(spect)) as *const raw::c_void
+
+    //AudioFile { name: name, data: data_af, spectrograms: None, max_frequncies: None}
 }
 
 #[no_mangle]

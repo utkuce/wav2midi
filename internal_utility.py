@@ -14,11 +14,27 @@ class FFI_Spectrogram(Structure):
     _fields_ = [("data", POINTER(POINTER(c_double))), ("shape", C_Tuple)]
 
 stft_rs = cdll.LoadLibrary('target\debug\stft_rust.dll')
-stft_rs.spectrogram.argtypes = [c_char_p, c_uint, c_uint]
-stft_rs.spectrogram.restype = c_void_p
+#stft_rs.spectrogram.argtypes = [c_char_p, c_uint, c_uint]
+#stft_rs.spectrogram.restype = c_void_p
+stft_rs.analyze.restype = c_void_p
 stft_rs.clean.argtypes = [c_void_p]
 
 ptr = None
+
+def getCombined(fileName):
+
+    ptr = stft_rs.analyze(fileName.encode('UTF-8'))
+    result = cast(ptr, POINTER(FFI_Spectrogram)).contents
+
+    data = []
+
+    for x in range(0, result.shape.x):
+        array_pointer = cast(result.data[x], POINTER(c_double*result.shape.y))
+        a = np.fromiter(array_pointer.contents, dtype=float)
+        data.append(a)
+    
+    stft_rs.clean(cast(ptr, c_void_p)) #data is cloned, original pointer can be deleted
+    return np.asarray(data)
 
 def stft(fileName, params):
 

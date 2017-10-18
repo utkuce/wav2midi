@@ -5,7 +5,7 @@ dependencies = [
  "apodize 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "arrayfire 3.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hound 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "num-complex 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
+ "itertools-num 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "rimd 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "stft 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -80,6 +80,14 @@ dependencies = [
 name = "hound"
 version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "itertools-num"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "num-traits 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "itoa"
@@ -342,6 +350,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum dtoa 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "09c3753c3db574d215cba4ea76018483895d7bff25a31b49ba45db21c48e50ab"
 "checksum enum_primitive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "be4551092f4d519593039259a9ed8daedf0da12e5109c5280338073eaeb81180"
 "checksum hound 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d751b836ac593fc578456297bea26218d15ef07c3086c70fca97ba5402e562ec"
+"checksum itertools-num 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4d78fa608383e6e608ba36f962ac991d5d6878d7203eb93b4711b14fa6717813"
 "checksum itoa 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "8324a32baf01e2ae060e9de58ed0bc2320c9a2833491ee36cd3b4c414de4db8c"
 "checksum lazy_static 0.2.9 (registry+https://github.com/rust-lang/crates.io-index)" = "c9e5e58fa1a4c3b915a561a78a22ee0cac6ab97dca2504428bc1cb074375f8d5"
 "checksum libc 0.2.30 (registry+https://github.com/rust-lang/crates.io-index)" = "2370ca07ec338939e356443dac2296f581453c35fe1e3a3ed06023c49435f915"
