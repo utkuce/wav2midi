@@ -1,6 +1,8 @@
+extern crate rimd;
+
 use std::os::raw;
 use std::{f64, fmt, slice};
-use rimd::{ TrackEvent, Event, MidiMessage, SMFWriter, SMFFormat, Track, SMF};
+use self::rimd::{ TrackEvent, Event, MidiMessage, SMFWriter, SMFFormat, Track, SMF};
 use std::path::Path;
 
 pub struct Note {name: String, midi: u8, duration: u64}
