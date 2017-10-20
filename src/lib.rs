@@ -6,7 +6,7 @@
 extern crate hound;
 extern crate arrayfire;
 
-use arrayfire::{Array, Dim4, Backend, set_backend};
+use arrayfire::{Array, Dim4};
 use std::collections::HashMap;
 
 use std::f64;
@@ -35,32 +35,35 @@ pub struct AudioFile {
 #[no_mangle]
 pub fn analyze(file_name: *const raw::c_char ) -> *const raw::c_void
 {
+    println!("Active Backend: {}", arrayfire::get_active_backend());
+    
     println!("reading file...");
     let name: String = unsafe{std::ffi::CStr::from_ptr(file_name)}.to_string_lossy().into_owned();
     let mut reader = hound::WavReader::open(name.clone()).unwrap();
     let data : Vec<f64> = reader.samples::<i16>().map(|sample| sample.unwrap() as f64).collect();
-    let mut data_af = Array::new(&data, Dim4::new(&[data.len() as u64,1,1,1])); 
     
-    //set_backend(Backend::CUDA);
-
-    let mut spectrograms : HashMap<String, Spectrogram> = HashMap::new();
+    let mut data_af = Array::new(&data, Dim4::new(&[data.len() as u64,1,1,1])); 
 
     println!("applying filters...");
-    data_af = ::filters::highpass(data_af, 200);
+    data_af = ::filters::highpass(data_af, 215);
+    //data_af = ::filters::lowpass(data_af, 500);
 
     println!("calculating narrowband spectrogram...");
     let narrowband = spectrogram::get_spectrogram(data_af.clone(), 4096, 256);
-    spectrograms.insert(String::from("narrowband"), narrowband.clone());
 
     println!("calculating wideband spectrogram...");
     let wideband = spectrogram::get_spectrogram(data_af, 44100, 2048);
-    spectrograms.insert(String::from("wideband"), wideband.clone());  
 
-    println!("combining spectorgrams...");
+    println!("combining spectrograms...");
     let combined = spectrogram::combine(narrowband, wideband);
-    spectrograms.insert(String::from("combined"), combined.clone()); 
 
-    let s = spectrogram::to_host(combined);
+    println!("calculating harmonic product spectrum...");
+    let hps = spectrogram::harmonic_product_spectrum(combined, 7);
+
+    println!("transfering data to the host...");
+
+    let s = spectrogram::to_host(hps);
+
     let p_array : Vec<*const raw::c_double> = 
         s.iter().map(|c| Box::into_raw(c.clone().into_boxed_slice()) as *const raw::c_double).collect();
         
