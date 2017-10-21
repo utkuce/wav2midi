@@ -6,125 +6,96 @@ extern crate itertools_num;
 use arrayfire::*;
 use self::apodize::{hanning_iter};
 use self::itertools_num::linspace;
-use std::{f64, thread};
+use std::f64;
 
 type Column = Vec<::std::os::raw::c_double>;
 type Spectrogram = Vec<Column>;
 
-pub fn get_spectrogram(audio_data : Array, window_size: usize, step_size: usize) -> Vec<Array>
+pub fn get_spectrogram(audio_data : Array, window_size: usize, step_size: usize) -> Array
 {
-    let mut spectrogram_af : Vec<Array> = Vec::new();  
-    let audio_len : usize = audio_data.dims()[0] as usize;
+    let audio_len : usize = audio_data.elements();
 
-    for index in (0..audio_len-window_size).step_by(step_size)
+    let spect_len : u64 = (( audio_len-(window_size-step_size) ) / step_size) as u64;
+    let array = Array::new_empty(Dim4::new(&[window_size as u64, spect_len, 1,1]), DType::F64);
+
+    let hanning_len = Dim4::new(&[window_size as u64,1,1,1]);
+    let hanning = Array::new(&hanning_iter(window_size as usize).collect::<Vec<f64>>(), hanning_len);
+
+    for (index, start) in (0..audio_len-window_size).step_by(step_size).enumerate()
     {
-        let sequence =  Seq::new(index as u32, index as u32 + window_size as u32, 1);
+        let sequence =  Seq::new(start as u32, start as u32 + (window_size-1) as u32, 1);
         let mut idxr = Indexer::new();                
         idxr.set_index(&sequence, 0, Some(true));
-        let values = index_gen(&audio_data, idxr);
 
-        let dim = values.dims();
-        let hanning = Array::new(&hanning_iter(dim[0] as usize).collect::<Vec<f64>>(), dim);
-                
-        let input = values * hanning;
-        let output : Array = fft(&input, 1.0, window_size as i64);
-        spectrogram_af.push(decomplexify(output));
+        let new_col = index_gen(&audio_data, idxr) * hanning.clone();
+        set_col(&array, &new_col, index as u64); 
     }
 
-    return spectrogram_af;
+    let half_len = (window_size as f32 / 2.).floor() as u64;
+    let result = Array::new_empty(Dim4::new(&[half_len, spect_len, 1, 1]), DType::F64);
+    for index in 0..spect_len
+    {
+        set_col(&result, &decomplexify(&fft(&col(&array, index), 1., window_size as i64)), index);
+    }
+
+    device_gc();
+    return result;
 }
 
-fn decomplexify(array : Array) -> Array
+fn decomplexify(array : &Array) -> Array
 {
-    let sequence =  Seq::new(0 as u32, ((array.dims()[0] as f32 / 2.).floor()-1.) as u32, 1);
+    let sequence0 = Seq::new(0 as u32, ((array.dims()[0] as f32 / 2.).floor()-1.) as u32, 1);
     let mut idxr = Indexer::new();            
-    idxr.set_index(&sequence, 0, Some(true));
-    let half = index_gen(&array, idxr);
-
+    idxr.set_index(&sequence0, 0, Some(true));
+  
+    let half = index_gen(array, idxr);
     let magnitude = sqrt( &(pow(&real(&half),&2, true) * pow(&imag(&half),&2, true)) );
     floor(&log1p(&magnitude))
 }
 
-fn resample(array: &Array, new_length : usize) -> Array
+pub fn combine(narrowband : Array, wideband : Array) -> Array
 {
-    let pos : Vec<f64> = linspace::<f64>(0., array.dims()[0] as f64, new_length).collect();
-    let pos_af = Array::new(&pos, Dim4::new(&[new_length as u64, 1,1,1]));
-    approx1(array, &pos_af , InterpType::LINEAR, 0.0)
+    let wd = wideband.dims();
+    let narrow = resize(&narrowband, wd[0] as i64, wd[1] as i64, InterpType::BILINEAR);
+    mul(&wideband, &narrow, true)
 }
 
-pub fn combine(narrowband : Vec<Array>, wideband : Vec<Array>) -> Vec<Array>
+pub fn harmonic_product_spectrum(combined : Array, rate : u32) -> Array
 {
-    let mut combined : Vec<Array> = Vec::new();
-    let scale = wideband.len() as f32 / narrowband.len() as f32;
+    let sequence0 = Seq::new(0 as u32, ((combined.dims()[0] as f32 / rate as f32)-1.) as u32, 1);
+    let sequence1 = Seq::new(0 as u32, (combined.dims()[1]-1) as u32, 1);
+    let mut idxr = Indexer::new();            
+    idxr.set_index(&sequence0, 0, Some(true));
+    idxr.set_index(&sequence1, 1, Some(true));    
+  
+    let mut hps = index_gen(&combined, idxr);
 
-    for (index, column) in narrowband.iter().enumerate()
-    {      
-        let column_interp = resample(column, wideband[0].dims()[0] as usize);
-        let i = (index as f32 * scale).floor() as usize;
-        combined.push(column_interp * wideband[i].clone());
-    }
-
-    return combined;
-}
-
-pub fn harmonic_product_spectrum(spectrogram : Vec<Array>, rate : u32) -> Vec<Array>
-{
-    let mut hps : Vec<Array> = Vec::new();
-    let column_length : u32 = spectrogram[0].dims()[0] as u32;
-    for column in spectrogram.iter()    
+    for r in 2..rate+1
     {
-        let mut c : Array = column.clone();
-        for r in 2..rate+1
-        {
-            let downsampled = resample(column, (column_length/r) as usize);
-            
-            let patch_len : u64 = column_length as u64 - downsampled.dims()[0];
-            let patch = Array::new(&vec![1.; patch_len as usize], Dim4::new(&[patch_len,1,1,1]));
-            c = c * join(0, &downsampled, &patch);
-        }
+        let scale = (combined.dims()[0] as f32 / r as f32) as i64;
+        let downsampled = resize(&combined, scale, combined.dims()[1] as i64, InterpType::BILINEAR);
 
-        hps.push(c);
+        let mut idxr = Indexer::new();            
+        idxr.set_index(&sequence0, 0, Some(true));
+        idxr.set_index(&sequence1, 1, Some(true)); 
+        hps *= index_gen(&downsampled, idxr);
     }
 
-    return hps;
+    return log1p(&hps);
 }
 
-pub fn to_host(spectrogram_af : Vec<Array>) -> Spectrogram
+pub fn to_host(spectrogram_af : Array) -> Spectrogram
 {
-    let cpu_count = num_cpus::get();
-    let mut thread_handles : Vec<thread::JoinHandle<(usize, Spectrogram)>> = Vec::new();    
-    let chunk_size = (spectrogram_af.len() as f32 / cpu_count as f32).ceil() as usize;
+    let window_size = spectrogram_af.dims()[0];
+    let slice_len = window_size * spectrogram_af.dims()[1];
+    let mut host = vec![0.; slice_len as usize];
+    spectrogram_af.host::<f64>(host.as_mut_slice());
 
-    for (index, piece) in spectrogram_af.chunks(chunk_size).enumerate()
-    {  
-        let owned_piece : Vec<Array> = Vec::from(piece);
-        let handle : thread::JoinHandle<(usize, Spectrogram)> = thread::spawn(move || 
-        {
-            let mut sub_spect : Spectrogram = Vec::new();
-            for column_af in owned_piece
-            {
-                let mut v = vec![0.; column_af.elements()];
-                let slice : &mut [f64] = v.as_mut_slice();
-                column_af.host(slice);
-                sub_spect.push(slice.to_vec());
-            }
-
-            return (index, sub_spect);
-        });
-
-        thread_handles.push(handle);         
-    }
-
-    let mut sub_spects : Vec<Spectrogram> = vec![Vec::new(); cpu_count];
-
-    for handle in thread_handles 
+    let mut spectrogram : Spectrogram = Vec::new();
+    for column in host.chunks(window_size as usize)
     {
-        let tuple : (usize, Spectrogram) = handle.join().unwrap(); 
-        sub_spects[tuple.0] = tuple.1;
+        spectrogram.push(column.to_vec());
     }
 
-    let mut final_spectrogram : Spectrogram = Vec::new();
-    for part in &mut sub_spects { final_spectrogram.append(part); }
-
-    return final_spectrogram;
+    return spectrogram;
 }
