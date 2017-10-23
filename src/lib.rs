@@ -7,7 +7,6 @@ extern crate hound;
 extern crate arrayfire;
 
 use arrayfire::{Array, Dim4};
-use std::collections::HashMap;
 
 use std::f64;
 use std::os::raw;
@@ -17,24 +16,19 @@ mod spectrogram;
 mod filters;
 mod postprocess;
 
+type Column = Vec<::std::os::raw::c_double>;
+type Spectrogram = Vec<Column>;
+
 #[repr(C)]
 pub struct FFI_Spectrogram {
     data : *const *const raw::c_double,
     shape : (u64, u64),
 }
 
-type Spectrogram = Vec<Array>;
-
-pub struct AudioFile {
-    name : String,
-    data : Array,
-    spectrograms : Option<HashMap<String, Spectrogram>>,
-    max_frequncies : Option<Array>, 
-}
-
 #[no_mangle]
-pub fn analyze(file_name: *const raw::c_char ) -> *const raw::c_void
+pub fn analyze(file_name: *const raw::c_char ) -> *const *const raw::c_void
 {
+    //arrayfire::set_backend(arrayfire::Backend::CPU);
     println!("Active Backend: {}", arrayfire::get_active_backend());
     
     println!("reading file...");
@@ -44,26 +38,33 @@ pub fn analyze(file_name: *const raw::c_char ) -> *const raw::c_void
     
     let mut data_af = Array::new(&data, Dim4::new(&[data.len() as u64,1,1,1])); 
 
+    let mut graphs = Vec::<*const raw::c_void>::new();
+    
     println!("applying filters...");
     data_af = ::filters::highpass(data_af, 215);
     //data_af = ::filters::lowpass(data_af, 500);
 
     println!("calculating narrowband spectrogram...");
     let narrowband = spectrogram::get_spectrogram(data_af.clone(), 4096, 256);
+    add_spect(narrowband.clone(), &mut graphs);
 
     println!("calculating wideband spectrogram...");
     let wideband = spectrogram::get_spectrogram(data_af, 44100, 2048);
+    add_spect(wideband.clone(), &mut graphs);
 
     println!("combining spectrograms...");
-    let combined = spectrogram::combine(narrowband, wideband);
+    let combined = spectrogram::combine(narrowband.clone(), wideband.clone());
+    add_spect(combined.clone(), &mut graphs);
 
     println!("calculating harmonic product spectrum...");
-    let hps = spectrogram::harmonic_product_spectrum(combined, 7);
+    let hps = spectrogram::harmonic_product_spectrum(combined.clone(), 7);
+    add_spect(hps.clone(), &mut graphs);    
 
-    println!("transfering data to the host...");
+    Box::into_raw(graphs.into_boxed_slice()) as *const *const raw::c_void
+}
 
-    let s = spectrogram::to_host(hps);
-
+fn to_ffi(s : &Vec<Vec<f64>>) -> *const raw::c_void
+{
     let p_array : Vec<*const raw::c_double> = 
         s.iter().map(|c| Box::into_raw(c.clone().into_boxed_slice()) as *const raw::c_double).collect();
         
@@ -73,8 +74,11 @@ pub fn analyze(file_name: *const raw::c_char ) -> *const raw::c_void
     };
 
     Box::into_raw(Box::new(spect)) as *const raw::c_void
+}
 
-    //AudioFile { name: name, data: data_af, spectrograms: None, max_frequncies: None}
+fn add_spect(spect: Array, list : &mut Vec<*const raw::c_void>)
+{
+    list.push(to_ffi(&spectrogram::to_host(spect)));
 }
 
 #[no_mangle]
