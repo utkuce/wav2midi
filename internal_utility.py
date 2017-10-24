@@ -19,7 +19,7 @@ stft_rs.clean.argtypes = [c_void_p]
 ptr = None
 
 def analyze(file_name):
-    ptr = stft_rs.analyze(file_name.encode('UTF-8'))
+    ptr = stft_rs.analyze(file_name.encode('UTF-8'), True)
     graphs = cast(ptr, POINTER(Graphs)).contents
 
     spect_list = []
@@ -47,9 +47,6 @@ def get_result(spect_pointer):
 
 def print_audio_details(fileName):
     stft_rs.print_audio_details(fileName.encode('UTF-8'))
-
-def write_midi(array, fileName):
-    stft_rs.write_midi((c_double * len(array))(*array), len(array), fileName.encode('UTF-8'))
 
 def smooth(dataSet, w):
     return np.convolve(dataSet, np.ones(w)/w)

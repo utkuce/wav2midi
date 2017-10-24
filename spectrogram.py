@@ -6,7 +6,6 @@ import sys
 import time
 start_time = time.time()
 
-iu.print_audio_details(sys.argv[1])
 spectrogram_list = iu.analyze(sys.argv[1])
 
 print("%s seconds" % int(time.time() - start_time))
@@ -21,7 +20,6 @@ variances = iu.smooth(variances, 5)
 averages = iu.smooth(averages, 5)
 
 frequencies = [np.argmax(n) for n in spectrogram_list[3]]
-iu.write_midi(frequencies, sys.argv[1])
 
 minf = np.amin(frequencies)
 maxf = np.amax(frequencies)
@@ -30,36 +28,36 @@ print ('drawing...')
 
 fig = plt.figure()
 
-ax1 = fig.add_subplot(2,2,1)
+ax1 = fig.add_subplot(4,1,1)
 ax2 = ax1.twinx()
 
 ax1.set_title('Narrowband')
-ax1.set_xlabel('Time')
+#ax1.set_xlabel('Time')
 ax1.set_ylabel('Frequency(Hz)')
 ax1.imshow(np.transpose(spectrogram_list[0]), cmap='inferno', interpolation='nearest', aspect='auto')
 ax1.invert_yaxis()
 
 plt.xlim(xmin=0)
 
-l1, = ax2.plot(variances, '-c', label='variance')
-l2, = ax2.plot(averages, '-w', label='average')
-plt.legend(handles=[l1, l2])
+#l1, = ax2.plot(variances, '-c', label='variance')
+#l2, = ax2.plot(averages, '-w', label='average')
+#plt.legend(handles=[l1, l2])
 
-ax3 = fig.add_subplot(2,2,2)
+ax3 = fig.add_subplot(4,1,2)
 ax3.set_title('Wideband')
-ax3.set_xlabel('Time')
+#ax3.set_xlabel('Time')
 ax3.set_ylabel('Frequency(Hz)')
 ax3.imshow(np.transpose(spectrogram_list[1]), cmap='inferno', interpolation='nearest', aspect='auto')
 ax3.invert_yaxis()
 
-ax4 = fig.add_subplot(2,2,3)
+ax4 = fig.add_subplot(4,1,3)
 ax4.set_title('Combined')
-ax4.set_xlabel('Time')
+#ax4.set_xlabel('Time')
 ax4.set_ylabel('Frequency(Hz)')
 ax4.imshow(np.transpose(spectrogram_list[2]), cmap='inferno', interpolation='nearest', aspect='auto')
 ax4.invert_yaxis()
 
-ax5 = fig.add_subplot(2,2,4)
+ax5 = fig.add_subplot(4,1,4)
 ax5.set_title('Harmonic Product Spectrum')
 ax5.set_xlabel('Time')
 ax5.set_ylabel('Frequency(Hz)')
