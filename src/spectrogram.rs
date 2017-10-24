@@ -1,11 +1,7 @@
-extern crate num_cpus;
-
 extern crate apodize;
-extern crate itertools_num;
 
 use arrayfire::*;
 use self::apodize::{hanning_iter};
-use self::itertools_num::linspace;
 use std::f64;
 
 type Column = Vec<::std::os::raw::c_double>;
@@ -38,7 +34,6 @@ pub fn get_spectrogram(audio_data : Array, window_size: usize, step_size: usize)
         set_col(&result, &decomplexify(&fft(&col(&array, index), 1., window_size as i64)), index);
     }
 
-    device_gc();
     return result;
 }
 
@@ -82,6 +77,11 @@ pub fn harmonic_product_spectrum(combined : Array, rate : u32) -> Array
     }
 
     return log1p(&hps);
+}
+
+pub fn get_frequencies(spectrogram: Array) -> Array
+{
+    imax(&spectrogram, 0).1
 }
 
 pub fn to_host(spectrogram_af : Array) -> Spectrogram
