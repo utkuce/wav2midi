@@ -9,13 +9,9 @@ crate-type = ["dylib"]
 
 [dependencies]
 hound = "3.1.0" # read wav file
-stft = "0.2.0" # short time fourier transform
-num_cpus = "0.2" # parallel calculation
 rimd = "0.0.1" # midi
-
 arrayfire = "3.5.0" # gpu acceleration
 apodize = "*" # windowing function
-itertools-num = "0.1.1" # linespace
 
 [dependencies.synthrs]
 git = "https://github.com/gyng/synthrs" # filters
