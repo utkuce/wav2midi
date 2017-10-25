@@ -8,8 +8,6 @@ start_time = time.time()
 
 spectrogram_list = iu.analyze(sys.argv[1])
 
-print("%s seconds" % int(time.time() - start_time))
-
 variances, averages = [], []
 
 for fourier in spectrogram_list[0]:

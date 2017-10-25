@@ -14,13 +14,9 @@ Build the [Rust] source as a dynamic library with:
 ```ssh
 $ cargo build
 ```
-then to analyze file:
+then, to analyze file:
 ```ssh
-$ analyze.py <file_name>
-```
-or to analyze _and_ draw the results
-```ssh
-$ spectrogram.py <file_name>
+$ analyze.py <file_name> [--draw]
 ```
 
 [Arrayfire Binaries]: <https://arrayfire.com/download/>
