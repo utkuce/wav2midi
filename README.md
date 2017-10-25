@@ -10,7 +10,7 @@ Converts a monophonic wav file into MIDI
 
 ## Usage
 
-Build the Rust source as a dynamic library with:
+Build the [Rust] source as a dynamic library with:
 ```ssh
 $ cargo build
 ```
@@ -26,4 +26,5 @@ $ spectrogram.py <file_name>
 [Arrayfire Binaries]: <https://arrayfire.com/download/>
 [CUDA Toolkit]: <https://developer.nvidia.com/cuda-toolkit>
 [Python3]: <https://www.python.org/downloads/>
+[Rust]: <https://www.rust-lang.org/en-US/>
 
