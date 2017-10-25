@@ -1,5 +1,4 @@
 # Audio Note Analysis
----
 
 Converts a monophonic wav file into MIDI
 
