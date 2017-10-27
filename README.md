@@ -4,17 +4,17 @@ Converts a monophonic wav file into MIDI
 
 ## Requirements
 
-To use, the following must be installed 
+To run, the following must be installed 
 
   - [Arrayfire Binaries]
   - [CUDA Toolkit]  (Optional)
   - [Python3]  (Not Required for standalone)
 
-If CUDA is not installed it will fall back to OPENCL or CPU
+If CUDA is not installed it will fallback to OPENCL or CPU
 
 ## Usage
 
-Build the [Rust] source as a dynamic library first, if `stft_rust.dll` doesn't exist:
+Build the [Rust] source as a dynamic library first, if `stft_rust.dll` doesn't already exist:
 ```
 $ cargo build
 ```
@@ -30,7 +30,7 @@ Replace `analyze.py` with `analyze` for the standalone version
 $ make
 ```
 
-will create a standalone distributable folder if [Rust Toolchain][Rust] and [Python3] are installed. `SINGLE_FILE=1` flag will create a single executable file instead of a folder
+will create a standalone distributable folder if [Rust Toolchain][Rust] and [Python3] are installed. `SINGLE_FILE=1` flag will create a single executable file instead of a folder, but the execution will be slower as everytime files are unpacked into a temporary folder
 
 [Arrayfire Binaries]: <https://arrayfire.com/download/>
 [CUDA Toolkit]: <https://developer.nvidia.com/cuda-toolkit>
