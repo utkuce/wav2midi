@@ -1,7 +1,6 @@
 from ctypes import cdll
 from sys import argv
 import time
-import os
 import spectrogram
 
 start_time = time.time()
