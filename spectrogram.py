@@ -4,12 +4,53 @@ import internal_utility as iu
 import sys
 import time
 
+def add_subplot_zoom(figure):
+
+    zoomed_axes = [None]
+
+    def on_click(event):
+        ax = event.inaxes
+
+        if ax is None:
+            return
+
+        if event.button != 3:
+            return
+
+        if zoomed_axes[0] is None:
+
+            zoomed_axes[0] = (ax, ax.get_position())
+            ax.set_position([0.04, 0.05, 0.93, 0.92])
+
+            # hide all the other axes...
+            for axis in event.canvas.figure.axes:
+                if axis is not ax:
+                    axis.set_visible(False)
+
+        else:
+            # restore the original state
+
+            zoomed_axes[0][0].set_position(zoomed_axes[0][1])
+            zoomed_axes[0] = None
+
+            # make other axes visible again
+            for axis in event.canvas.figure.axes:
+                axis.set_visible(True)
+
+        # redraw to make changes visible.
+        event.canvas.draw()
+
+    figure.canvas.mpl_connect('button_press_event', on_click)
+
 def draw(file_name):
-    
+
+    print ('drawing...')
+    plt.switch_backend('TkAgg')
     start_time = time.time()
 
     spectrogram_list = iu.analyze(sys.argv[1])
-
+    
+    '''
     variances, averages = [], []
 
     for fourier in spectrogram_list[0]:
@@ -18,71 +59,52 @@ def draw(file_name):
 
     variances = iu.smooth(variances, 5)
     averages = iu.smooth(averages, 5)
+    '''
 
     frequencies = [np.argmax(n) for n in spectrogram_list[3]]
 
     minf = np.amin(frequencies)
     maxf = np.amax(frequencies)
 
-    print ('drawing...')
-
     fig = plt.figure()
+    add_subplot_zoom(fig)
 
-    ax1 = fig.add_subplot(4,1,1)
-    ax2 = ax1.twinx()
+    images = []
+    for i in range(4):
+        ax = fig.add_subplot(4,1,i+1)
+        ax.imshow(np.transpose(spectrogram_list[i]), cmap='inferno', aspect='auto')
+        ax.set_ylabel('Frequency(Hz)')
+        ax.invert_yaxis()
+        images.append(ax)
 
-    ax1.set_title('Narrowband')
-    #ax1.set_xlabel('Time')
-    ax1.set_ylabel('Frequency(Hz)')
-    ax1.imshow(np.transpose(spectrogram_list[0]), cmap='inferno', interpolation='nearest', aspect='auto')
-    ax1.invert_yaxis()
-
-    plt.xlim(xmin=0)
-
-    #l1, = ax2.plot(variances, '-c', label='variance')
-    #l2, = ax2.plot(averages, '-w', label='average')
-    #plt.legend(handles=[l1, l2])
-
-    ax3 = fig.add_subplot(4,1,2)
-    ax3.set_title('Wideband')
-    #ax3.set_xlabel('Time')
-    ax3.set_ylabel('Frequency(Hz)')
-    ax3.imshow(np.transpose(spectrogram_list[1]), cmap='inferno', interpolation='nearest', aspect='auto')
-    ax3.invert_yaxis()
-
-    ax4 = fig.add_subplot(4,1,3)
-    ax4.set_title('Combined')
-    #ax4.set_xlabel('Time')
-    ax4.set_ylabel('Frequency(Hz)')
-    ax4.imshow(np.transpose(spectrogram_list[2]), cmap='inferno', interpolation='nearest', aspect='auto')
-    ax4.invert_yaxis()
-
-    ax5 = fig.add_subplot(4,1,4)
-    ax5.set_title('Harmonic Product Spectrum')
-    ax5.set_xlabel('Time')
-    ax5.set_ylabel('Frequency(Hz)')
-    ax5.imshow(np.transpose(spectrogram_list[3]), cmap='inferno', interpolation='nearest', aspect='auto')
-    ax5.invert_yaxis()
+    images[0].set_title('Narrowband')
+    images[1].set_title('Wideband')
+    images[2].set_title('Combined')
+    images[3].set_title('Harmonic Product Spectrum')
 
     scale = np.divide(spectrogram_list[1].shape[1], spectrogram_list[0].shape[1])
     lim = [int((minf - 50 if minf>50 else 0)/scale), int((maxf+50)/scale)]
 
-    ax1.set_ylim(lim)
-    ax3.set_ylim([minf - 50 if minf>50 else 0, maxf+50])
-    ax4.set_ylim([minf - 50 if minf>50 else 0, maxf+50])
-    ax5.set_ylim([minf - 50 if minf>50 else 0, maxf+50])
+    images[0].set_ylim(lim)
+    images[1].set_ylim([minf - 50 if minf>50 else 0, maxf+50])
+    images[2].set_ylim([minf - 50 if minf>50 else 0, maxf+50])
+    images[3].set_ylim([minf - 50 if minf>50 else 0, maxf+50])
 
-    l4, = ax5.plot(frequencies, '-w', label='max')
+    '''
+    ax2 = images[0].twinx()
+    l1, = ax2.plot(variances, '-c', label='variance')
+    l2, = ax2.plot(averages, '-w', label='average')
+    plt.legend(handles=[l1, l2])
+    '''
+
+    l4, = images[3].plot(frequencies, '-w', label='max')
     plt.legend(handles=[l4])
 
-    plt.subplots_adjust(left=0.03, bottom=0.05, right=0.99, top=0.97, hspace=0.20, wspace=0.13)
+    plt.subplots_adjust(0.04, 0.05, 0.97, 0.97, 0.13, 0.25)
 
     print("Finished in %s seconds" % int(time.time() - start_time))
 
-    try:
-        plt.get_current_fig_manager().window.state('zoomed')
-        fig.canvas.set_window_title('Music Analysis')
-    except:
-        pass
-
+    plt.get_current_fig_manager().window.state('zoomed')
+    fig.canvas.set_window_title('Music Analysis')
+    
     plt.show()
