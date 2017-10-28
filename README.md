@@ -7,8 +7,8 @@ Converts a monophonic wav file into MIDI
 To run, the following must be installed 
 
   - [Arrayfire Binaries]
-  - [CUDA Toolkit]  (Optional)
-  - [Python3]  (Not Required for standalone)
+  - [CUDA Toolkit] \(Optional\)
+  - [Python3] \(Not Required for standalone\)
 
 If CUDA is not installed it will fallback to OPENCL or CPU
 
