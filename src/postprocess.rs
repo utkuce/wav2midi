@@ -18,7 +18,7 @@ impl fmt::Display for Song {
 
 fn get_pitch(frequency : u32) -> (String, u8) 
 {
-    if frequency == (0 as u32) { return (String::from("R"), 0); } // TODO: midi rest
+    if frequency < 16 { return (String::from("R"), 0); }
 
     let notes = vec![ "C", "C#/Db", "D", "D#/Eb", "E", "F", "F#/Gb", "G", "G#/Ab", "A", "A#/Bb", "B" ];
     
