@@ -4,15 +4,56 @@ use arrayfire::*;
 use self::apodize::{hanning_iter};
 use std::f64;
 
-type Column = Vec<::std::os::raw::c_double>;
+type Column = Vec<f64>;
 type Spectrogram = Vec<Column>;
 
-pub fn get_spectrogram(audio_data : Array, window_size: usize, step_size: usize) -> Array
+pub fn get_spectrogram(audio_data : &Array, window_size: usize, step_size: usize) -> Array
+{
+    let array = stft(audio_data, window_size, step_size);
+
+    let sequence0 = Seq::new(0, ((array.dims()[0] as f32 / 2.).floor()-1.) as u32, 1);
+    let sequence1 = Seq::new(0, (array.dims()[1]-1) as u32, 1);    
+    let mut idxr = Indexer::new();            
+    idxr.set_index(&sequence0, 0, Some(true));
+    idxr.set_index(&sequence1, 1, Some(true));    
+    
+    let half = index_gen(&array, idxr);
+
+    complex_to_magnitude(&half)
+}
+
+pub fn complex_to_magnitude(stft: &Array) -> Array
+{
+    let spect_len = stft.dims()[1];
+    let result = Array::new_empty(stft.dims(), DType::F64);
+
+    for index in 0..spect_len
+    {
+        set_col(&result, &magnitude(&col(&stft, index)), index);
+    }
+
+    return result;
+}
+
+pub fn complex_to_phase(stft: &Array) -> Array
+{
+    let spect_len = stft.dims()[1];
+    let result = Array::new_empty(stft.dims(), DType::F64);
+
+    for index in 0..spect_len
+    {
+        set_col(&result, &phase(&col(&stft, index)), index);
+    }
+
+    return result;
+}
+
+pub fn stft(audio_data : &Array, window_size: usize, step_size: usize) -> Array
 {
     let audio_len : usize = audio_data.elements();
 
     let spect_len : u64 = (( audio_len-(window_size-step_size) ) / step_size) as u64;
-    let array = Array::new_empty(Dim4::new(&[window_size as u64, spect_len, 1,1]), DType::F64);
+    let array = Array::new_empty(Dim4::new(&[window_size as u64, spect_len, 1,1]), DType::C64);
 
     let hanning_len = Dim4::new(&[window_size as u64,1,1,1]);
     let hanning = Array::new(&hanning_iter(window_size as usize).collect::<Vec<f64>>(), hanning_len);
@@ -23,36 +64,85 @@ pub fn get_spectrogram(audio_data : Array, window_size: usize, step_size: usize)
         let mut idxr = Indexer::new();                
         idxr.set_index(&sequence, 0, Some(true));
 
-        let new_col = index_gen(&audio_data, idxr) * hanning.clone();
+        let new_col = fft(&(index_gen(&audio_data, idxr) * hanning.clone()), 1., window_size as i64);
         set_col(&array, &new_col, index as u64); 
     }
 
-    let half_len = (window_size as f32 / 2.).floor() as u64;
-    let result = Array::new_empty(Dim4::new(&[half_len, spect_len, 1, 1]), DType::F64);
-    for index in 0..spect_len
+    return array;
+}
+
+fn magnitude(array : &Array) -> Array
+{
+    let magnitude = sqrt( &(pow(&real(&array),&2, true) * pow(&imag(&array),&2, true)) );
+    floor(&log1p(&magnitude))
+}
+
+fn phase(array: &Array) -> Array
+{
+    atan2(&imag(array), &real(array), true)
+}
+
+pub fn onset_detection(complex: &Array) -> Vec<f64>
+{
+    let mut result : Vec<f64> = vec![0.,0.];
+
+    let m = complex_to_magnitude(complex);
+    let p = complex_to_phase(complex);
+
+    let spect_len = complex.dims()[1];
+    for index in 2..spect_len
     {
-        set_col(&result, &decomplexify(&fft(&col(&array, index), 1., window_size as i64)), index);
+        let predicted_m = col(&m, index-1);
+        let predicted_p = mul(&col(&p, index-1),&2, true) - col(&p, index-2);
+
+        let a = col(&m, index) - predicted_m;
+        let rectified = (&a + abs(&a))/2;
+        let b = col(&p, index) - predicted_p;
+        let distance = sqrt(&(pow(&rectified, &2, true) + pow(&b, &2, true))); 
+
+        result.push(sum_all(&distance).0);
+    }
+
+    return result;
+}
+/*
+pub fn spectral_flux(spectrogram: &Array) -> Vec<f64>
+{
+    let s = complex_to_magnitude(spectrogram);
+    let mut result : Vec<f64> = Vec::new();
+    let spect_len = spectrogram.dims()[1];
+    for index in 0..spect_len-1
+    {
+        let diff = col(&s, index+1) - col(&s, index);
+        let rectified = (&diff + abs(&diff))/2;
+        let norm_sq = sum_all(&pow(&rectified, &2, true));
+        result.push(norm_sq.0);
     }
 
     return result;
 }
 
-fn decomplexify(array : &Array) -> Array
+pub fn phase_deviation(spectrogram : &Array) -> Vec<f64>
 {
-    let sequence0 = Seq::new(0 as u32, ((array.dims()[0] as f32 / 2.).floor()-1.) as u32, 1);
-    let mut idxr = Indexer::new();            
-    idxr.set_index(&sequence0, 0, Some(true));
-  
-    let half = index_gen(array, idxr);
-    let magnitude = sqrt( &(pow(&real(&half),&2, true) * pow(&imag(&half),&2, true)) );
-    floor(&log1p(&magnitude))
-}
+    let s = complex_to_phase(spectrogram);
+    let mut result : Vec<f64> = Vec::new();
+    let spect_len = spectrogram.dims()[1];
+    for index in 2..spect_len
+    {
+        let predicted = mul(&col(&s, index-1),&2, true) - col(&s, index-2);
+        let diff = col(&s, index) - predicted;
+        let norm_sq = mean_all(&pow(&diff, &2, true));
+        result.push(norm_sq.0);
+    }
 
-pub fn combine(narrowband : Array, wideband : Array) -> Array
+    return result;
+}
+*/
+pub fn combine(narrowband : &Array, wideband : &Array) -> Array
 {
     let wd = wideband.dims();
     let narrow = resize(&narrowband, wd[0] as i64, wd[1] as i64, InterpType::BILINEAR);
-    mul(&wideband, &narrow, true)
+    mul(wideband, &narrow, true)
 }
 
 pub fn harmonic_product_spectrum(combined : Array, rate : u32) -> Array

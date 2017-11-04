@@ -48,33 +48,23 @@ def draw(file_name):
     plt.switch_backend('TkAgg')
     start_time = time.time()
 
-    spectrogram_list = iu.analyze(sys.argv[1])
-    
-    '''
-    variances, averages = [], []
+    graphs = iu.analyze(sys.argv[1])  
+    frequencies = graphs[4]
+    detection = graphs[5]
 
-    for fourier in spectrogram_list[0]:
-        variances.append(np.var(fourier))
-        averages.append(np.average(fourier))
-
-    variances = iu.smooth(variances, 5)
-    averages = iu.smooth(averages, 5)
-    '''
-
-    frequencies = [np.argmax(n) for n in spectrogram_list[3]]
-
-    minf = np.amin(frequencies)
     maxf = np.amax(frequencies)
+    minf = np.amin([i for i in frequencies if i != 0])
 
     fig = plt.figure()
     add_subplot_zoom(fig)
 
     images = []
     for i in range(4):
-        ax = fig.add_subplot(4,1,i+1)
-        ax.imshow(np.transpose(spectrogram_list[i]), cmap='inferno', aspect='auto')
+        ax = fig.add_subplot(5,1,i+1)
+        ax.imshow(np.transpose(graphs[i]), cmap='inferno', aspect='auto')
         ax.set_ylabel('Frequency(Hz)')
         ax.invert_yaxis()
+        ax.set_xticks([])
         images.append(ax)
 
     images[0].set_title('Narrowband')
@@ -82,23 +72,25 @@ def draw(file_name):
     images[2].set_title('Combined')
     images[3].set_title('Harmonic Product Spectrum')
 
-    scale = np.divide(spectrogram_list[1].shape[1], spectrogram_list[0].shape[1])
-    lim = [int((minf - 50 if minf>50 else 0)/scale), int((maxf+50)/scale)]
+    scale = np.divide(graphs[1].shape[1], graphs[0].shape[1])
+    lim = [int((minf - 10 if minf>10 else 0)/scale), int((maxf+10)/scale)]
 
     images[0].set_ylim(lim)
-    images[1].set_ylim([minf - 50 if minf>50 else 0, maxf+50])
-    images[2].set_ylim([minf - 50 if minf>50 else 0, maxf+50])
-    images[3].set_ylim([minf - 50 if minf>50 else 0, maxf+50])
+    images[1].set_ylim([minf - 10 if minf>10 else 0, maxf+10])
+    images[2].set_ylim([minf - 10 if minf>10 else 0, maxf+10])
+    images[3].set_ylim([minf - 10 if minf>10 else 0, maxf+10])
 
-    '''
-    ax2 = images[0].twinx()
-    l1, = ax2.plot(variances, '-c', label='variance')
-    l2, = ax2.plot(averages, '-w', label='average')
-    plt.legend(handles=[l1, l2])
-    '''
+    l1, = images[3].plot(frequencies, '-w', label='max') 
+    images[3].set_xlim(xmax=len(frequencies))
+    images[3].legend(handles=[l1])
 
-    l4, = images[3].plot(frequencies, '-w', label='max')
-    plt.legend(handles=[l4])
+    ax1 = fig.add_subplot(5,1,5)
+    l2, = ax1.plot(detection, '-c', label='detection')
+    ax1.set_xticks([])
+
+    ax1.set_xlim(xmin=0, xmax= len(detection))
+    ax1.set_ylim(ymin = np.amin([i for i in detection if i != 0]))
+    ax1.legend(handles=[l2])
 
     plt.subplots_adjust(0.04, 0.05, 0.97, 0.97, 0.13, 0.25)
 
