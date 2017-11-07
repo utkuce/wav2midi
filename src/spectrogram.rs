@@ -84,7 +84,7 @@ fn phase(array: &Array) -> Array
 
 pub fn onset_detection(complex: &Array) -> Vec<f64>
 {
-    let mut result : Vec<f64> = vec![0.,0.];
+    let mut result : Vec<f64> = Vec::new();//vec![0.,0.];
 
     let m = complex_to_magnitude(complex);
     let p = complex_to_phase(complex);
@@ -103,7 +103,9 @@ pub fn onset_detection(complex: &Array) -> Vec<f64>
         result.push(sum_all(&distance).0);
     }
 
-    return result;
+    let mut v = vec![result[0];2];
+    v.extend(result);
+    return v;
 }
 /*
 pub fn spectral_flux(spectrogram: &Array) -> Vec<f64>

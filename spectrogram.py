@@ -87,7 +87,6 @@ def draw(results, mylib):
 
     ax1.set_title('Onset Detection Function')
     ax1.set_xlim(xmin=0, xmax= len(detection))
-    ax1.set_ylim(ymin = np.amin([i for i in detection if i != 0]))
 
     plt.subplots_adjust(0.04, 0.05, 0.97, 0.97, 0.13, 0.25)
 
