@@ -23,19 +23,15 @@ pub struct FFI_Spectrogram {
 }
 
 #[no_mangle]
-pub fn analyze(file_name: *const raw::c_char, draw_results: bool ) -> *const *const raw::c_void
+pub fn analyze(file_name: *const raw::c_char, hps_rate: raw::c_uint, draw_results: bool ) -> *const *const raw::c_void
 {
-    //arrayfire::set_backend(arrayfire::Backend::CPU);
     println!("Active Backend: {}", arrayfire::get_active_backend());
     
     println!("reading file...");
     let name: String = unsafe{std::ffi::CStr::from_ptr(file_name)}.to_string_lossy().into_owned();
     let mut reader = hound::WavReader::open(name.clone()).unwrap();
 
-    print!("Audio: {{ Duration: {} seconds, ", reader.duration() / reader.spec().sample_rate);
-    print!("Sample Rate: {}, ", reader.spec().sample_rate);
-    print!("Channels: {}, ", reader.spec().channels);
-    println!("Bit Depth: {} }}", reader.spec().bits_per_sample);
+    print_audio_details(&reader);
 
     let data : Vec<f64> = reader.samples::<i16>().map(|sample| sample.unwrap() as f64).collect();
     let mut data_af = Array::new(&data, Dim4::new(&[data.len() as u64,1,1,1])); 
@@ -51,11 +47,11 @@ pub fn analyze(file_name: *const raw::c_char, draw_results: bool ) -> *const *co
     println!("combining spectrograms...");
     let combined = spectrogram::combine(&narrowband, &wideband);
     println!("calculating harmonic product spectrum...");
-    let hps = spectrogram::harmonic_product_spectrum(combined.clone(), 3); // TODO: hps rate as parameter
+    let hps = spectrogram::harmonic_product_spectrum(combined.clone(), hps_rate);
 
     let frequencies = spectrogram::get_frequencies(hps.clone());
 
-    println!("onset detection...");    
+    println!("onset detection function...");    
     let complex = spectrogram::stft(&data_af, 8192, 1024);
     let complex_df = spectrogram::onset_detection(&complex);
 
@@ -76,7 +72,7 @@ pub fn analyze(file_name: *const raw::c_char, draw_results: bool ) -> *const *co
         graphs.push(pointer as *const raw::c_void);        
     }
 
-    println!("writing midi...");
+    println!("writing to midi file...");
     write_midi(frequencies, name);
 
     arrayfire::device_gc();
@@ -115,11 +111,8 @@ pub extern fn clean1d( ptr : *const raw::c_void)
     unsafe { Box::from_raw(ptr as *mut raw::c_double) };
 }
 
-pub extern fn print_audio_details(file_name: *const raw::c_char) 
+fn print_audio_details(reader: &hound::WavReader<std::io::BufReader<std::fs::File>>) 
 {
-    let name: String = unsafe { std::ffi::CStr::from_ptr(file_name).to_string_lossy().into_owned() };
-    let reader = hound::WavReader::open(name).unwrap();
-
     print!("Audio: {{ Duration: {} seconds, ", reader.duration() / reader.spec().sample_rate);
     print!("Sample Rate: {}, ", reader.spec().sample_rate);
     print!("Channels: {}, ", reader.spec().channels);
@@ -128,7 +121,7 @@ pub extern fn print_audio_details(file_name: *const raw::c_char)
 
 fn write_midi(frequencies: Array, name: String)
 {
-    let reader = hound::WavReader::open(name.clone()).unwrap();
+    let reader = hound::WavReader::open(&name).unwrap();
 
     // division = 1 beat = 1 seconds
     let seconds = reader.duration() as f64 / reader.spec().sample_rate as f64;
@@ -141,6 +134,6 @@ fn write_midi(frequencies: Array, name: String)
     let midi_name = String::from(Path::new(name.as_str()).file_stem().unwrap().to_str().unwrap());
     let song = postprocess::Song {notes: notes, name: midi_name, division: division};
 
-    println!("{}", song);
+    //println!("{}", song);
     postprocess::write_midi(song);
 }

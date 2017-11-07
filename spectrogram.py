@@ -1,8 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import internal_utility as iu
-import sys
-import time
 
 def add_subplot_zoom(figure):
 
@@ -42,13 +40,12 @@ def add_subplot_zoom(figure):
 
     figure.canvas.mpl_connect('button_press_event', on_click)
 
-def draw(file_name):
+def draw(results, mylib):
 
-    print ('drawing...')
+    print ('drawing results...')
     plt.switch_backend('TkAgg')
-    start_time = time.time()
 
-    graphs = iu.analyze(sys.argv[1])  
+    graphs = iu.analyze(results, mylib)  
     frequencies = graphs[4]
     detection = graphs[5]
 
@@ -88,15 +85,13 @@ def draw(file_name):
     l2, = ax1.plot(detection, '-c', label='detection')
     ax1.set_xticks([])
 
+    ax1.set_title('Onset Detection Function')
     ax1.set_xlim(xmin=0, xmax= len(detection))
     ax1.set_ylim(ymin = np.amin([i for i in detection if i != 0]))
-    ax1.legend(handles=[l2])
 
     plt.subplots_adjust(0.04, 0.05, 0.97, 0.97, 0.13, 0.25)
 
-    print("Finished in %s seconds" % int(time.time() - start_time))
-
     plt.get_current_fig_manager().window.state('zoomed')
     fig.canvas.set_window_title('Music Analysis')
-    
-    plt.show()
+
+    return plt

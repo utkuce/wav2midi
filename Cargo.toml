@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["utku <utkuce@gmail.com>"]
 
 [lib]
-name = "stft_rust"
+name = "mylib"
 crate-type = ["dylib"]
 
 [dependencies]
