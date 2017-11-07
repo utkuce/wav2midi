@@ -20,7 +20,7 @@ $ cargo build
 ```
 then, to analyze a file:
 ```
-$ analyze.py <file_name> [--draw]
+$ analyze.py <file_name> <hps_rate> [--draw]
 ```
 Replace `analyze.py` with `analyze` for the standalone version
 
