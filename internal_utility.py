@@ -12,11 +12,11 @@ class FFI_Spectrogram(Structure):
 class Graphs(Structure):
     _fields_ = [("pointers", c_void_p*6)]
 
-def analyze(results, mylib):
+graphs = Graphs()
 
-    mylib.clean2d.argtypes = [c_void_p]
-    mylib.clean1d.argtypes = [c_void_p]
+def from_ffi(results, mylib):
     
+    global graphs
     graphs = cast(results, POINTER(Graphs)).contents
 
     spect_list = []
@@ -24,16 +24,12 @@ def analyze(results, mylib):
     for i,g in enumerate(graphs.pointers):
         if i < 4:
             spect_list.append(get_result(g))
-            mylib.clean2d(cast(g, c_void_p))
+        elif i == 4:
+            pointer = cast(g, POINTER(c_uint*len(spect_list[3])))
+            spect_list.append(np.fromiter(pointer.contents, dtype=np.uint))
         else:
-            if i == 4:
-                pointer = cast(g, POINTER(c_uint*len(spect_list[3])))
-                spect_list.append(np.fromiter(pointer.contents, dtype=np.uint))
-            else:
-                pointer = cast(g, POINTER(c_double*(len(spect_list[0]-1)) ))
-                spect_list.append(np.fromiter(pointer.contents, dtype=float))
-        
-            mylib.clean1d(cast(g, c_void_p))
+            pointer = cast(g, POINTER(c_double*(len(spect_list[0]-1)) ))
+            spect_list.append(np.fromiter(pointer.contents, dtype=float))
         
     return spect_list
 
@@ -55,11 +51,27 @@ def smooth(dataSet, w):
 
 def maximas(data):
 
-    maximas = []
     derivative = np.diff(data)
+    maximas = []
 
-    for i in range (0, len(data)-2):
+    for i in range (len(derivative)-1):
         if derivative[i] > 0 and derivative[i+1] < 0:
             maximas.append(i)
 
     return maximas
+
+def peaks(data):
+
+    peaks = []
+
+    derivative = np.diff(data)
+    m = maximas(data)
+    dynamic_threshold = np.average(m, weights=m)
+    
+    for i,v in enumerate(derivative):
+        if i+1 < len(derivative) and i > 5:
+            heigh_enough = data[i] - data[i-5] > height_threshold
+            if v > 0 and derivative[i+1] < 0 and heigh_enough:
+                markers_on.append(i+1)
+         
+    return markers_on

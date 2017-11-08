@@ -16,5 +16,4 @@ else:
     results = mylib.analyze(argv[1].encode('UTF-8'), int(argv[2]), draw)
     print("Finished in %s seconds" % int(time.time() - start_time))    
     if draw:
-        spectrogram.draw(results, mylib).show()
-    
+        spectrogram.draw(results, mylib)

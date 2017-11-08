@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import internal_utility as iu
+from ctypes import cast, c_void_p
 
 def add_subplot_zoom(figure):
 
@@ -45,7 +46,7 @@ def draw(results, mylib):
     print ('drawing results...')
     plt.switch_backend('TkAgg')
 
-    graphs = iu.analyze(results, mylib)  
+    graphs = iu.from_ffi(results, mylib)  
     frequencies = graphs[4]
     detection = graphs[5]
 
@@ -77,7 +78,8 @@ def draw(results, mylib):
     images[2].set_ylim([minf - 10 if minf>10 else 0, maxf+10])
     images[3].set_ylim([minf - 10 if minf>10 else 0, maxf+10])
 
-    l1, = images[3].plot(frequencies, '-w', label='max') 
+    changes = len(np.where(frequencies[:-1] != frequencies[1:])[0])
+    l1, = images[3].plot(frequencies, '-w', label='max (' + str(changes) + ")") 
     images[3].set_xlim(xmax=len(frequencies))
     images[3].legend(handles=[l1])
 
@@ -93,4 +95,13 @@ def draw(results, mylib):
     plt.get_current_fig_manager().window.state('zoomed')
     fig.canvas.set_window_title('Music Analysis')
 
-    return plt
+    plt.show()
+
+    mylib.clean2d.argtypes = [c_void_p]
+    mylib.clean1d.argtypes = [c_void_p]
+
+    for i,g in enumerate(iu.graphs.pointers):
+        ptr = cast(g, c_void_p)
+        mylib.clean2d(ptr) if i < 4 else mylib.clean1d(ptr)
+
+
