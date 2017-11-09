@@ -78,14 +78,16 @@ def draw(results, mylib):
     images[2].set_ylim([minf - 10 if minf>10 else 0, maxf+10])
     images[3].set_ylim([minf - 10 if minf>10 else 0, maxf+10])
 
-    changes = len(np.where(frequencies[:-1] != frequencies[1:])[0])
-    l1, = images[3].plot(frequencies, '-w', label='max (' + str(changes) + ")") 
+    l1, = images[3].plot(frequencies, '-w', label='max') 
     images[3].set_xlim(xmax=len(frequencies))
     images[3].legend(handles=[l1])
 
     ax1 = fig.add_subplot(5,1,5)
-    l2, = ax1.plot(detection, '-c', label='detection')
-    ax1.set_xticks([])
+    peaks = iu.peaks(detection, 7, 1.03)
+    l2, = ax1.plot(detection, '-co', label='onset detection', markevery=peaks[0])
+    l3, = ax1.plot(peaks[1], '-r', label='dynamic threshold')
+    ax1.set_xticks(peaks[0])
+    ax1.legend(handles=[l2,l3])
 
     ax1.set_title('Onset Detection Function')
     ax1.set_xlim(xmin=0, xmax= len(detection))

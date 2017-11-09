@@ -54,24 +54,30 @@ def maximas(data):
     derivative = np.diff(data)
     maximas = []
 
-    for i in range (len(derivative)-1):
-        if derivative[i] > 0 and derivative[i+1] < 0:
+    for i in range(1, len(data)-1):
+        if data[i] - data[i-1] > 0 and data[i] - data[i+1] > 0:
             maximas.append(i)
 
     return maximas
 
-def peaks(data):
+def peaks(data, half_h, weight):
 
     peaks = []
+    maximas_indices = maximas(data)
+    dynamic_threshold = []
 
-    derivative = np.diff(data)
-    m = maximas(data)
-    dynamic_threshold = np.average(m, weights=m)
+    for i in range(half_h, len(data)-half_h):
+        dynamic_threshold.append(weight*np.median(data[i-half_h: i+half_h-1]))
+
+    for i in range(5):
+        dynamic_threshold.insert(0, dynamic_threshold[0])
     
-    for i,v in enumerate(derivative):
-        if i+1 < len(derivative) and i > 5:
-            heigh_enough = data[i] - data[i-5] > height_threshold
-            if v > 0 and derivative[i+1] < 0 and heigh_enough:
-                markers_on.append(i+1)
-         
-    return markers_on
+    i = 0
+    while i < len(dynamic_threshold):
+        if data[i] > dynamic_threshold[i] and i in maximas_indices:
+            peaks.append(i)
+            i += half_h
+        else:
+            i+=1
+
+    return (peaks, dynamic_threshold)
