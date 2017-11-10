@@ -1,7 +1,6 @@
 from __future__ import division
 import numpy as np
 from ctypes import *
-from sys import argv
 
 class C_Tuple(Structure):
     _fields_ = [("x", c_uint64), ("y", c_uint64)]
@@ -60,7 +59,7 @@ def maximas(data):
 
     return maximas
 
-def peaks(data, half_h, weight):
+def peaks(data, half_h, c1):
 
     peaks = []
     maximas_indices = maximas(data)
@@ -69,7 +68,7 @@ def peaks(data, half_h, weight):
     for i in range(half_h, len(data)-half_h):
         window = data[i-half_h: i+half_h-1]
         weights = list(range(1,half_h,1)) + list(range(half_h,0,-1))
-        dynamic_threshold.append(weight*np.average(window, weights=weights))
+        dynamic_threshold.append(c1*np.average(window, weights=weights))
 
     for i in range(5):
         dynamic_threshold.insert(0, dynamic_threshold[0])
