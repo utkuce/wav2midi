@@ -7,20 +7,22 @@ Converts a monophonic wav file into MIDI
 To run, the following must be installed 
 
   - [Arrayfire Binaries]
-  - [CUDA Toolkit] \(Optional\)
-  - [Python3] \(Not Required for standalone\)
+  - [CUDA Toolkit] <sup>[1]</sup>
+  - [Python3] <sup>[2]</sup>
 
-If CUDA is not installed it will fallback to OPENCL or CPU
+ 1. If CUDA is not installed it will fallback to OPENCL or CPU
+ 2. Not required for standalone version
 
 ## Usage
 
-Build the [Rust] source as a dynamic library first, if `stft_rust.dll` doesn't already exist:
+`mylib.dll` must be present in order for it to work. If it is not, first build the [Rust] source as a dynamic library with the following:
 ```
 $ cargo build
 ```
 then, to analyze a file:
 ```
-$ analyze.py <file_name> <hps_rate> [--draw]
+$ analyze.py [-h] -f FILE_NAME -w WINDOW [-p HIGHPASS] -r HPS_RATE
+                  [-o ONSET_WINDOW] [-c THRESHOLD_CONSTANT]
 ```
 Replace `analyze.py` with `analyze` for the standalone version
 

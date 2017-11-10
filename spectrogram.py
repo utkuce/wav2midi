@@ -41,7 +41,7 @@ def add_subplot_zoom(figure):
 
     figure.canvas.mpl_connect('button_press_event', on_click)
 
-def draw(results, mylib):
+def draw(results, mylib, half_h, c1):
 
     print ('drawing results...')
     plt.switch_backend('TkAgg')
@@ -83,7 +83,7 @@ def draw(results, mylib):
     images[3].legend(handles=[l1])
 
     ax1 = fig.add_subplot(5,1,5)
-    peaks = iu.peaks(detection, 7, 1.03)
+    peaks = iu.peaks(detection, half_h, c1)
     l2, = ax1.plot(detection, '-co', label='onset detection', markevery=peaks[0])
     l3, = ax1.plot(peaks[1], '-r', label='dynamic threshold')
     ax1.set_xticks(peaks[0])
@@ -92,7 +92,7 @@ def draw(results, mylib):
     ax1.set_title('Onset Detection Function')
     ax1.set_xlim(xmin=0, xmax= len(detection))
 
-    plt.subplots_adjust(0.04, 0.05, 0.97, 0.97, 0.13, 0.25)
+    plt.subplots_adjust(0.04, 0.05, 0.97, 0.97, 0.13, 0.20)
 
     plt.get_current_fig_manager().window.state('zoomed')
     fig.canvas.set_window_title('Music Analysis')

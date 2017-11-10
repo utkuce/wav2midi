@@ -23,7 +23,8 @@ pub struct FFI_Spectrogram {
 }
 
 #[no_mangle]
-pub fn analyze(file_name: *const raw::c_char, hps_rate: raw::c_uint, draw_results: bool ) -> *const *const raw::c_void
+pub fn analyze(file_name: *const raw::c_char, window_size: raw::c_uint, highpass: raw::c_uint, 
+               hps_rate: raw::c_uint) -> *const *const raw::c_void
 {
     println!("Active Backend: {}", arrayfire::get_active_backend());
     
@@ -37,11 +38,12 @@ pub fn analyze(file_name: *const raw::c_char, hps_rate: raw::c_uint, draw_result
     let mut data_af = Array::new(&data, Dim4::new(&[data.len() as u64,1,1,1])); 
   
     println!("applying preprocess filters..."); // TODO: filters as parameters
-    data_af = ::filters::highpass(data_af, 215);
-    //data_af = ::filters::lowpass(data_af, 200);
+    data_af = ::filters::highpass(data_af, highpass as usize);
+    //data_af = ::filters::lowpass(data_af, 330);
 
     println!("calculating narrowband spectrogram...");
-    let narrowband = spectrogram::get_spectrogram(&data_af, 8192, 1024);
+    let window_size = (2. as f64).powi(window_size as i32) as usize;
+    let narrowband = spectrogram::get_spectrogram(&data_af, window_size, 1024);
     println!("calculating wideband spectrogram...");
     let wideband = spectrogram::get_spectrogram(&data_af, 44100, 1024);
     println!("combining spectrograms...");
@@ -56,21 +58,19 @@ pub fn analyze(file_name: *const raw::c_char, hps_rate: raw::c_uint, draw_result
     let complex_df = spectrogram::onset_detection(&complex);
 
     let mut graphs = Vec::<*const raw::c_void>::new();    
-    if draw_results 
-    {
-        graphs.push(to_ffi(&spectrogram::to_host(narrowband)));
-        graphs.push(to_ffi(&spectrogram::to_host(wideband)));
-        graphs.push(to_ffi(&spectrogram::to_host(combined)));
-        graphs.push(to_ffi(&spectrogram::to_host(hps)));
-        
-        let mut frequencies_host : Vec<raw::c_uint> = vec![0; frequencies.elements()];
-        frequencies.host(frequencies_host.as_mut_slice());
-        let f_pointer = Box::into_raw(frequencies_host.into_boxed_slice()) as *const raw::c_uint;
-        graphs.push(f_pointer as *const raw::c_void);
 
-        let pointer = Box::into_raw(complex_df.into_boxed_slice()) as *const raw::c_double;
-        graphs.push(pointer as *const raw::c_void);        
-    }
+    graphs.push(to_ffi(&spectrogram::to_host(narrowband)));
+    graphs.push(to_ffi(&spectrogram::to_host(wideband)));
+    graphs.push(to_ffi(&spectrogram::to_host(combined)));
+    graphs.push(to_ffi(&spectrogram::to_host(hps)));
+        
+    let mut frequencies_host : Vec<raw::c_uint> = vec![0; frequencies.elements()];
+    frequencies.host(frequencies_host.as_mut_slice());
+    let f_pointer = Box::into_raw(frequencies_host.into_boxed_slice()) as *const raw::c_uint;
+    graphs.push(f_pointer as *const raw::c_void);
+
+    let pointer = Box::into_raw(complex_df.into_boxed_slice()) as *const raw::c_double;
+    graphs.push(pointer as *const raw::c_void);        
 
     println!("writing to midi file...");
     write_midi(frequencies, name);
