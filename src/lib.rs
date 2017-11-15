@@ -6,7 +6,7 @@
 extern crate hound;
 extern crate arrayfire;
 
-use arrayfire::{Array, Dim4};
+use arrayfire::{Array, Dim4, Seq};
 
 use std::f64;
 use std::os::raw;
@@ -41,29 +41,37 @@ pub fn analyze(file_name: *const raw::c_char, window_size: raw::c_uint, highpass
     data_af = ::filters::highpass(data_af, highpass as usize);
     //data_af = ::filters::lowpass(data_af, 330);
 
+    let mut graphs = Vec::<*const raw::c_void>::new();        
+
     println!("calculating narrowband spectrogram...");
     let window_size = (2. as f64).powi(window_size as i32) as usize;
-    let narrowband = spectrogram::get_spectrogram(&data_af, window_size, 1024);
+    let complex = spectrogram::stft(&data_af, window_size, 1024);
+    let narrowband = spectrogram::complex_to_magnitude(&complex);
+    graphs.push(to_ffi(&spectrogram::to_host(&narrowband)));
+    
     println!("calculating wideband spectrogram...");
     let wideband = spectrogram::get_spectrogram(&data_af, 44100, 1024);
+    graphs.push(to_ffi(&spectrogram::to_host(&wideband)));
+
     println!("combining spectrograms...");
     let combined = spectrogram::combine(&narrowband, &wideband);
+    graphs.push(to_ffi(&spectrogram::to_host(&combined)));    
+
     println!("calculating harmonic product spectrum...");
-    let hps = spectrogram::harmonic_product_spectrum(combined.clone(), hps_rate);
+    let hps = spectrogram::harmonic_product_spectrum(combined, hps_rate);
+    graphs.push(to_ffi(&spectrogram::to_host(&hps)));    
 
-    let frequencies = spectrogram::get_frequencies(hps.clone());
+    let frequencies = spectrogram::get_frequencies(&hps);
 
-    println!("onset detection function...");    
-    let complex = spectrogram::stft(&data_af, 8192, 1024);
-    let complex_df = spectrogram::onset_detection(&complex);
+    println!("onset detection function...");
+    let phase = &spectrogram::complex_to_phase(&complex);
+    let complex_df = spectrogram::onset_detection(&narrowband, phase);
 
-    let mut graphs = Vec::<*const raw::c_void>::new();    
+    println!("writing to midi file...");
+    create_midi(&frequencies, name);
 
-    graphs.push(to_ffi(&spectrogram::to_host(narrowband)));
-    graphs.push(to_ffi(&spectrogram::to_host(wideband)));
-    graphs.push(to_ffi(&spectrogram::to_host(combined)));
-    graphs.push(to_ffi(&spectrogram::to_host(hps)));
-        
+    println!("Analysis completed.");    
+
     let mut frequencies_host : Vec<raw::c_uint> = vec![0; frequencies.elements()];
     frequencies.host(frequencies_host.as_mut_slice());
     let f_pointer = Box::into_raw(frequencies_host.into_boxed_slice()) as *const raw::c_uint;
@@ -72,12 +80,8 @@ pub fn analyze(file_name: *const raw::c_char, window_size: raw::c_uint, highpass
     let pointer = Box::into_raw(complex_df.into_boxed_slice()) as *const raw::c_double;
     graphs.push(pointer as *const raw::c_void);        
 
-    println!("writing to midi file...");
-    write_midi(frequencies, name);
-
     arrayfire::device_gc();
 
-    println!("Analysis completed.");
     Box::into_raw(graphs.into_boxed_slice()) as *const *const raw::c_void
 }
 
@@ -92,6 +96,17 @@ fn to_ffi(s : &Vec<Vec<f64>>) -> *const raw::c_void
     };
 
     Box::into_raw(Box::new(spect)) as *const raw::c_void
+}
+
+fn post_filter(spectrogram: &Array, above: usize, below: usize) -> Array
+{
+    let sequence0 = Seq::new(above as u32, below as u32, 1);
+    let sequence1 = Seq::new(0, (spectrogram.dims()[1]-1) as u32, 1);
+    let mut idxr = arrayfire::Indexer::new();            
+    idxr.set_index(&sequence0, 0, Some(true));
+    idxr.set_index(&sequence1, 1, Some(true));    
+  
+    arrayfire::index_gen(&spectrogram, idxr)
 }
 
 #[no_mangle]
@@ -119,7 +134,7 @@ fn print_audio_details(reader: &hound::WavReader<std::io::BufReader<std::fs::Fil
     println!("Bit Depth: {} }}", reader.spec().bits_per_sample);
 }
 
-fn write_midi(frequencies: Array, name: String)
+fn create_midi(frequencies: &Array, name: String)
 {
     let reader = hound::WavReader::open(&name).unwrap();
 

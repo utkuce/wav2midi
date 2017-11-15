@@ -10,16 +10,7 @@ type Spectrogram = Vec<Column>;
 pub fn get_spectrogram(audio_data : &Array, window_size: usize, step_size: usize) -> Array
 {
     let array = stft(audio_data, window_size, step_size);
-
-    let sequence0 = Seq::new(0, ((array.dims()[0] as f32 / 2.).floor()-1.) as u32, 1);
-    let sequence1 = Seq::new(0, (array.dims()[1]-1) as u32, 1);    
-    let mut idxr = Indexer::new();            
-    idxr.set_index(&sequence0, 0, Some(true));
-    idxr.set_index(&sequence1, 1, Some(true));    
-    
-    let half = index_gen(&array, idxr);
-
-    complex_to_magnitude(&half)
+    complex_to_magnitude(&array)
 }
 
 pub fn complex_to_magnitude(stft: &Array) -> Array
@@ -38,7 +29,7 @@ pub fn complex_to_magnitude(stft: &Array) -> Array
 pub fn complex_to_phase(stft: &Array) -> Array
 {
     let spect_len = stft.dims()[1];
-    let result = Array::new_empty(stft.dims(), DType::F64);
+    let result = Array::new_empty(stft.dims(), DType::F64);    
 
     for index in 0..spect_len
     {
@@ -68,28 +59,36 @@ pub fn stft(audio_data : &Array, window_size: usize, step_size: usize) -> Array
         set_col(&array, &new_col, index as u64); 
     }
 
-    return array;
+    return get_half(&array);
 }
 
-fn magnitude(array : &Array) -> Array
+fn get_half(stft: &Array) -> Array
 {
-    let magnitude = sqrt( &(pow(&real(&array),&2, true) * pow(&imag(&array),&2, true)) );
+    let sequence0 = Seq::new(0, ((stft.dims()[0] as f32 / 2.).floor()-1.) as u32, 1);
+    let sequence1 = Seq::new(0, (stft.dims()[1]-1) as u32, 1);    
+    let mut idxr = Indexer::new();            
+    idxr.set_index(&sequence0, 0, Some(true));
+    idxr.set_index(&sequence1, 1, Some(true));    
+    
+    index_gen(&stft, idxr)
+}
+
+fn magnitude(col : &Array) -> Array
+{
+    let magnitude = sqrt( &(pow(&real(&col),&2, true) * pow(&imag(&col),&2, true)) );
     floor(&log1p(&magnitude))
 }
 
-fn phase(array: &Array) -> Array
+fn phase(col: &Array) -> Array
 {
-    atan2(&imag(array), &real(array), true)
+    atan2(&imag(col), &real(col), true)
 }
 
-pub fn onset_detection(complex: &Array) -> Vec<f64>
+pub fn onset_detection(m: &Array, p: &Array) -> Vec<f64>
 {
-    let mut result : Vec<f64> = Vec::new();//vec![0.,0.];
+    let mut result : Vec<f64> = Vec::new();
 
-    let m = complex_to_magnitude(complex);
-    let p = complex_to_phase(complex);
-
-    let spect_len = complex.dims()[1];
+    let spect_len = m.dims()[1];
     for index in 2..spect_len
     {
         let predicted_m = col(&m, index-1);
@@ -107,39 +106,7 @@ pub fn onset_detection(complex: &Array) -> Vec<f64>
     v.extend(result);
     return v;
 }
-/*
-pub fn spectral_flux(spectrogram: &Array) -> Vec<f64>
-{
-    let s = complex_to_magnitude(spectrogram);
-    let mut result : Vec<f64> = Vec::new();
-    let spect_len = spectrogram.dims()[1];
-    for index in 0..spect_len-1
-    {
-        let diff = col(&s, index+1) - col(&s, index);
-        let rectified = (&diff + abs(&diff))/2;
-        let norm_sq = sum_all(&pow(&rectified, &2, true));
-        result.push(norm_sq.0);
-    }
 
-    return result;
-}
-
-pub fn phase_deviation(spectrogram : &Array) -> Vec<f64>
-{
-    let s = complex_to_phase(spectrogram);
-    let mut result : Vec<f64> = Vec::new();
-    let spect_len = spectrogram.dims()[1];
-    for index in 2..spect_len
-    {
-        let predicted = mul(&col(&s, index-1),&2, true) - col(&s, index-2);
-        let diff = col(&s, index) - predicted;
-        let norm_sq = mean_all(&pow(&diff, &2, true));
-        result.push(norm_sq.0);
-    }
-
-    return result;
-}
-*/
 pub fn combine(narrowband : &Array, wideband : &Array) -> Array
 {
     let wd = wideband.dims();
@@ -171,12 +138,12 @@ pub fn harmonic_product_spectrum(combined : Array, rate : u32) -> Array
     return log1p(&hps);
 }
 
-pub fn get_frequencies(spectrogram: Array) -> Array
+pub fn get_frequencies(spectrogram: &Array) -> Array
 {
     imax(&spectrogram, 0).1
 }
 
-pub fn to_host(spectrogram_af : Array) -> Spectrogram
+pub fn to_host(spectrogram_af : &Array) -> Spectrogram
 {
     let window_size = spectrogram_af.dims()[0];
     let slice_len = window_size * spectrogram_af.dims()[1];
