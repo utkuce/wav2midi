@@ -59,14 +59,14 @@ def maximas(data):
 
     return maximas
 
-def peaks(data, half_h, c1):
+def peaks(onset, half_h, c1):
 
     peaks = []
-    maximas_indices = maximas(data)
+    maximas_indices = maximas(onset)
     dynamic_threshold = []
 
-    for i in range(half_h, len(data)-half_h):
-        window = data[i-half_h: i+half_h-1]
+    for i in range(half_h, len(onset)-half_h):
+        window = onset[i-half_h: i+half_h-1]
         weights = list(range(1,half_h,1)) + list(range(half_h,0,-1))
         dynamic_threshold.append(c1*np.average(window, weights=weights))
 
@@ -75,10 +75,24 @@ def peaks(data, half_h, c1):
     
     i = 0
     while i < len(dynamic_threshold):
-        if data[i] > dynamic_threshold[i] and i in maximas_indices:
-            peaks.append(i)
-            i += half_h
-        else:
-            i+=1
+        if onset[i] > dynamic_threshold[i] and i in maximas_indices:
+            if set(range(i-half_h, i+half_h)).isdisjoint(peaks):
+                peaks.append(i)
+            else:
+                for (j,p) in enumerate(peaks):
+                    if p in list(range(i-half_h, i+half_h)) and i>p:
+                        peaks[j] = i
+        i+=1    
 
     return (peaks, dynamic_threshold)
+
+def repeated_notes(peaks, changes, half_h, index_scale):
+
+    repeats = []
+    for p in peaks:
+        l = range(round((p-half_h)*index_scale), round((p+half_h)*index_scale),1)
+        if set(l).isdisjoint(changes):
+            print(p, list(l))
+            repeats.append(p)
+
+    return repeats

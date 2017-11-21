@@ -78,13 +78,30 @@ def draw(results, mylib, half_h, c1):
     images[2].set_ylim([minf - 10 if minf>10 else 0, maxf+10])
     images[3].set_ylim([minf - 10 if minf>10 else 0, maxf+10])
 
-    l1, = images[3].plot(frequencies, '-w', label='max') 
+    changes = []
+    for i in range(1, len(frequencies)):
+        if abs(int(frequencies[i]) - int(frequencies[i-1])) > 5:
+            changes.append(i-1)
+
+    l1, = images[3].plot(frequencies, '-w', label='max')
     images[3].set_xlim(xmax=len(frequencies))
+    for c in changes:
+        images[3].axvline(x=c, color='green')
     images[3].legend(handles=[l1])
 
     ax1 = fig.add_subplot(5,1,5)
+    ax1.set_yticks([])
     peaks = iu.peaks(detection, half_h, c1)
+
+    repeats = iu.repeated_notes(peaks[0], changes, half_h, len(frequencies)/len(detection))
+
     l2, = ax1.plot(detection, '-co', label='onset detection', markevery=peaks[0])
+    for tick in ax1.get_xticklabels():
+        tick.set_rotation(90)
+
+    for r in repeats:
+        ax1.axvline(x=r)
+
     l3, = ax1.plot(peaks[1], '-r', label='dynamic threshold')
     ax1.set_xticks(peaks[0])
     ax1.legend(handles=[l2,l3])
