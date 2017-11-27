@@ -11,7 +11,7 @@ parser.add_argument('-f', '--file-name',
 
 parser.add_argument('-w','--window', 
     help='2 raised to the w will be used as window length for narrowband spectrogram', 
-    required=True, default=13, type=int)
+    required=False, default=13, type=int)
 
 parser.add_argument('-p', '--highpass', 
     help='highpass filter frequency for preprocessing',
@@ -19,7 +19,7 @@ parser.add_argument('-p', '--highpass',
 
 parser.add_argument('-r', '--hps-rate', 
     help='the rate used for harmonic product spectrum',
-    required=True, default=3, type=int)
+    required=False, default=3, type=int)
 
 parser.add_argument('-o', '--onset-window',
     help='half the length of the sliding window used for onset detection thresholding',
