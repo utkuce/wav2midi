@@ -16,10 +16,13 @@ def add_subplot_zoom(figure):
         if event.button != 3:
             return
 
-        if zoomed_axes[0] is None:
+        if (zoomed_axes[0] is None):
 
-            zoomed_axes[0] = (ax, ax.get_position())
+            zoomed_axes[0] = (ax, ax.get_position(), ax.get_ylim())
             ax.set_position([0.04, 0.05, 0.93, 0.92])
+            
+            if ax.get_title() != 'Onset Detection Function':
+                ax.set_ylim([0, possible_ymax[ax]])
 
             # hide all the other axes...
             for axis in event.canvas.figure.axes:
@@ -30,6 +33,7 @@ def add_subplot_zoom(figure):
             # restore the original state
 
             zoomed_axes[0][0].set_position(zoomed_axes[0][1])
+            zoomed_axes[0][0].set_ylim(zoomed_axes[0][2])            
             zoomed_axes[0] = None
 
             # make other axes visible again
@@ -40,6 +44,8 @@ def add_subplot_zoom(figure):
         event.canvas.draw()
 
     figure.canvas.mpl_connect('button_press_event', on_click)
+
+possible_ymax = {} 
 
 def draw(results, mylib, half_h, c1):
 
@@ -64,6 +70,7 @@ def draw(results, mylib, half_h, c1):
         ax.invert_yaxis()
         ax.set_xticks([])
         images.append(ax)
+        possible_ymax[ax] = ax.get_ylim()[1]
 
     images[0].set_title('Narrowband')
     images[1].set_title('Wideband')
@@ -78,29 +85,20 @@ def draw(results, mylib, half_h, c1):
     images[2].set_ylim([minf - 10 if minf>10 else 0, maxf+10])
     images[3].set_ylim([minf - 10 if minf>10 else 0, maxf+10])
 
-    changes = []
-    for i in range(1, len(frequencies)):
-        if abs(int(frequencies[i]) - int(frequencies[i-1])) > 5:
-            changes.append(i-1)
-
     l1, = images[3].plot(frequencies, '-w', label='max')
     images[3].set_xlim(xmax=len(frequencies))
-    for c in changes:
-        images[3].axvline(x=c, color='green')
     images[3].legend(handles=[l1])
 
     ax1 = fig.add_subplot(5,1,5)
     ax1.set_yticks([])
     peaks = iu.peaks(detection, half_h, c1)
 
-    repeats = iu.repeated_notes(peaks[0], changes, half_h, len(frequencies)/len(detection))
-
-    l2, = ax1.plot(detection, '-co', label='onset detection', markevery=peaks[0])
+    l2, = ax1.plot(detection, '-c', label='onset detection')
     for tick in ax1.get_xticklabels():
         tick.set_rotation(90)
 
-    for r in repeats:
-        ax1.axvline(x=r)
+    for p in peaks[0]:
+        ax1.axvline(x=p)
 
     l3, = ax1.plot(peaks[1], '-r', label='dynamic threshold')
     ax1.set_xticks(peaks[0])
