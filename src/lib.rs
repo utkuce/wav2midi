@@ -61,24 +61,22 @@ pub fn analyze(file_name: *const raw::c_char, window_size: raw::c_uint, highpass
     let hps = spectrogram::harmonic_product_spectrum(combined, hps_rate);
     graphs.push(to_ffi(&spectrogram::to_host(&hps)));    
 
+    println!("getting frequencies...");
     let frequencies = spectrogram::get_frequencies(&hps);
+    let mut frequencies_host : Vec<raw::c_uint> = vec![0; frequencies.elements()];
+    frequencies.host(frequencies_host.as_mut_slice());
+    let freq_p = Box::into_raw(frequencies_host.into_boxed_slice()) as *const raw::c_uint;
+    graphs.push(freq_p as *const raw::c_void);
 
     println!("onset detection function...");
-    let phase = &spectrogram::complex_to_phase(&complex);
-    let complex_df = spectrogram::onset_detection(&narrowband, phase);
+    let complex_df = spectrogram::onset_detection(&complex);
+    let detect_p = Box::into_raw(complex_df.into_boxed_slice()) as *const raw::c_double;
+    graphs.push(detect_p as *const raw::c_void);
 
     println!("writing to midi file...");
     create_midi(&frequencies, name);
 
     println!("Analysis completed.");    
-
-    let mut frequencies_host : Vec<raw::c_uint> = vec![0; frequencies.elements()];
-    frequencies.host(frequencies_host.as_mut_slice());
-    let f_pointer = Box::into_raw(frequencies_host.into_boxed_slice()) as *const raw::c_uint;
-    graphs.push(f_pointer as *const raw::c_void);
-
-    let pointer = Box::into_raw(complex_df.into_boxed_slice()) as *const raw::c_double;
-    graphs.push(pointer as *const raw::c_void);        
 
     arrayfire::device_gc();
 
