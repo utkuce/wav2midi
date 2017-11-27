@@ -92,7 +92,6 @@ def repeated_notes(peaks, changes, half_h, index_scale):
     for p in peaks:
         l = range(round((p-half_h)*index_scale), round((p+half_h)*index_scale),1)
         if set(l).isdisjoint(changes):
-            print(p, list(l))
             repeats.append(p)
 
     return repeats
