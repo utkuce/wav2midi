@@ -80,7 +80,7 @@ def peaks(onset, half_h, c1):
                 peaks.append(i)
             else:
                 for (j,p) in enumerate(peaks):
-                    if p in list(range(i-half_h, i+half_h)) and i>p:
+                    if p in list(range(i-half_h, i+half_h)) and onset[i]>onset[p]:
                         peaks[j] = i
         i+=1    
 
