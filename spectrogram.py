@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import internal_utility as iu
-from ctypes import cast, c_void_p
+from ctypes import cast, c_void_p, c_double, c_uint
 
 def add_subplot_zoom(figure):
 
@@ -31,7 +31,6 @@ def add_subplot_zoom(figure):
 
         else:
             # restore the original state
-
             zoomed_axes[0][0].set_position(zoomed_axes[0][1])
             zoomed_axes[0][0].set_ylim(zoomed_axes[0][2])            
             zoomed_axes[0] = None
@@ -47,14 +46,22 @@ def add_subplot_zoom(figure):
 
 possible_ymax = {} 
 
-def draw(results, mylib, half_h, c1):
-
-    print ('drawing results...')
-    plt.switch_backend('TkAgg')
+def draw(results, mylib, half_h, c1, file_name):
 
     graphs = iu.from_ffi(results, mylib)  
     frequencies = graphs[4]
     detection = graphs[5]
+
+    peaks = iu.peaks(detection, half_h, c1)
+    onsets = [ i / len(detection) for i in peaks[0] ]
+
+    print ('creating midi file...')  
+    mylib.create_midi((c_uint * len(frequencies))(*frequencies), len(frequencies),
+                      (c_double * len(onsets))(*onsets), len(onsets),
+                      file_name.encode('UTF-8'))
+
+    print ('drawing results...')
+    plt.switch_backend('TkAgg')
 
     maxf = np.amax(frequencies)
     minf = np.amin([i for i in frequencies if i != 0])
@@ -91,7 +98,6 @@ def draw(results, mylib, half_h, c1):
 
     ax1 = fig.add_subplot(5,1,5)
     ax1.set_yticks([])
-    peaks = iu.peaks(detection, half_h, c1)
 
     l2, = ax1.plot(detection, '-c', label='onset detection')
     for tick in ax1.get_xticklabels():
@@ -120,5 +126,3 @@ def draw(results, mylib, half_h, c1):
     for i,g in enumerate(iu.graphs.pointers):
         ptr = cast(g, c_void_p)
         mylib.clean2d(ptr) if i < 4 else mylib.clean1d(ptr)
-
-

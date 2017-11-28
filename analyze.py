@@ -38,4 +38,4 @@ mylib.analyze.restype = c_void_p
 
 results = mylib.analyze(args['file_name'].encode('UTF-8'), args['window'], args['highpass'], args['hps_rate'])
 print("Finished in %s seconds" % int(time.time() - start_time))    
-spectrogram.draw(results, mylib, args['onset_window'], args['threshold_constant'])
+spectrogram.draw(results, mylib, args['onset_window'], args['threshold_constant'], args['file_name'])
