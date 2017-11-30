@@ -84,12 +84,9 @@ fn phase(col: &Array) -> Array
     atan2(&imag(col), &real(col), true)
 }
 
-pub fn onset_detection(c: &Array) -> Vec<f64>
+pub fn onset_detection(m: &Array, p: &Array) -> Vec<f64>
 {
     let mut result : Vec<f64> = Vec::new();
-
-    let m = complex_to_magnitude(c);
-    let p = complex_to_phase(c);
 
     let spect_len = m.dims()[1];
     for index in 2..spect_len

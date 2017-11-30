@@ -70,7 +70,8 @@ pub fn analyze(file_name: *const raw::c_char, window_size: raw::c_uint, highpass
     graphs.push(freq_p as *const raw::c_void);
 
     println!("onset detection function...");
-    let complex_df = spectrogram::onset_detection(&complex);
+    let phase = spectrogram::complex_to_phase(&complex);
+    let complex_df = spectrogram::onset_detection(&narrowband, &phase);
     let detect_p = Box::into_raw(complex_df.into_boxed_slice()) as *const raw::c_double;
     graphs.push(detect_p as *const raw::c_void);
 
