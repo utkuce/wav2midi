@@ -27,13 +27,13 @@ pub struct FFI_Spectrogram {
 pub fn analyze(file_name: *const raw::c_char, window_size: raw::c_uint, highpass: raw::c_uint, 
                hps_rate: raw::c_uint) -> *const *const raw::c_void
 {
-    println!("Active Backend: {}", arrayfire::get_active_backend());
+    //println!("Active Backend: {}", arrayfire::get_active_backend());
     
     println!("reading file...");
     let name: String = unsafe{std::ffi::CStr::from_ptr(file_name)}.to_string_lossy().into_owned();
     let mut reader = hound::WavReader::open(name.clone()).unwrap();
 
-    print_audio_details(&reader);
+    //print_audio_details(&reader);
 
     let data : Vec<f64> = reader.samples::<i16>().map(|sample| sample.unwrap() as f64).collect();
     let mut data_af = Array::new(&data, Dim4::new(&[data.len() as u64,1,1,1])); 
@@ -150,6 +150,6 @@ pub extern fn create_midi(frequencies: *mut raw::c_uint, f_len: raw::c_uint,
     let midi_name = String::from(Path::new(name.as_str()).file_stem().unwrap().to_str().unwrap());
     let song = postprocess::Song {notes: notes, name: midi_name, division: division};
 
-    println!("{}", song);
+    //println!("{}", song);
     postprocess::write_midi(song);
 }
