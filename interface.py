@@ -2,6 +2,8 @@ import pyqtgraph as pg
 import numpy as np
 from pyqtgraph.Qt import QtGui, QtCore
 from pyqtgraph.dockarea import *
+import internal_utility as iu
+
 
 app = QtGui.QApplication([])
 win = QtGui.QMainWindow()
@@ -51,10 +53,12 @@ generalLayout = QtGui.QVBoxLayout()
 generalGroup.setLayout(generalLayout)
 
 browse = QtGui.QPushButton('Browse')
-cont = QtGui.QPushButton('Continue', enabled=False)
+analyze = QtGui.QPushButton('Analyze', enabled=False)
+midi = QtGui.QPushButton('MIDI', enabled=False)
 
 generalLayout.addWidget(browse)
-generalLayout.addWidget(cont)
+generalLayout.addWidget(analyze)
+generalLayout.addWidget(midi)
 
 ####
 
@@ -67,10 +71,16 @@ down = QtGui.QPushButton('Down')
 flat = QtGui.QPushButton('Flat')
 steep = QtGui.QPushButton('Steep')
 
+cLabel = QtGui.QLabel('c = 1.05')
+hLabel = QtGui.QLabel('half_h = 5')
+
 thresholdLayout.addWidget(up,0,0)
 thresholdLayout.addWidget(down,1,0)
+thresholdLayout.addWidget(cLabel,2,0)
+
 thresholdLayout.addWidget(flat,0,1)
 thresholdLayout.addWidget(steep,1,1)
+thresholdLayout.addWidget(hLabel,2,1)
 
 ####
 
@@ -78,19 +88,17 @@ paramGroup = QtGui.QGroupBox("Parameters", enabled=False)
 paramLayout = QtGui.QGridLayout()
 paramGroup.setLayout(paramLayout)
 
-paramLayout.addWidget(QtGui.QLabel("HPS"), 0, 0)
-hps = pg.SpinBox(value=3, int=True, bounds=[1, None])
+paramLayout.addWidget(QtGui.QLabel("HPS Rate"), 0, 0)
+hps = pg.SpinBox(value=3, int=True, bounds=[1, None], step=1)
 paramLayout.addWidget(hps, 0, 1)
 
 paramLayout.addWidget(QtGui.QLabel("Window Size"), 1, 0)
-window = pg.SpinBox(value=12, int=True, bounds=[1, None])
+window = pg.SpinBox(value=12, int=True, bounds=[1, None], step=1)
 paramLayout.addWidget(window, 1, 1)
 
-addhighpass = QtGui.QCheckBox("Add highpass")
-paramLayout.addWidget(addhighpass, 0, 2)
-
-highpass = pg.SpinBox(value=30, int=True, bounds=[1, 20000])
-paramLayout.addWidget(highpass, 1, 2)
+paramLayout.addWidget(QtGui.QLabel("Highpass"), 2, 0)
+highpass = pg.SpinBox(value=30, int=True, bounds=[1, 20000], step=10)
+paramLayout.addWidget(highpass, 2, 1)
 
 ####
 
@@ -110,60 +118,66 @@ def browseClick(self):
 
         global file_path
         file_path = file_dialog.selectedFiles()[0]
+        progressBar.setFormat(file_path)        
         paramGroup.setEnabled(True)
-        cont.setEnabled(True)
-        progressBar.setFormat(file_path)
+        analyze.setEnabled(True)
+        thresholdGroup.setEnabled(False)
+
+        p1.clear()
+        p2.clear()
 
 browse.clicked.connect(browseClick)
 
-firstCont = True
 graphs = None
+pointerList = None
 
-def contButton():
+half_h = 5
+c = 1.05
+onsets = []
 
-    if firstCont:
+def analyzeButton():
 
-        cont.setEnabled(False)
-        paramGroup.setEnabled(False)
-        progressBar.setEnabled(True)
-        progressBar.setMaximum(8)
-        i = 0
+    analyze.setEnabled(False)
+    paramGroup.setEnabled(False)
+    progressBar.setEnabled(True)
+    progressBar.setMaximum(8)
 
-        import subprocess
-        proc = subprocess.Popen(["python", "analyze.py", "-f", file_path, 
-                                "-w", str(window.value()), "-p", str(highpass.value()),
-                                "-r", str(hps.value()), "-i", "true"],stdout=subprocess.PIPE)
+    import subprocess
+    proc = subprocess.Popen(["python", "analyze.py", "-f", file_path, 
+                            "-w", str(window.value()), "-p", str(highpass.value()),
+                            "-r", str(hps.value()), "-i", "true"],stdout=subprocess.PIPE)
 
-        while proc.poll() is None:
+    i = 0
+    while proc.poll() is None:
 
-            l = proc.stdout.readline() # This blocks until it receives a newline.
-            if l == b'':
-                break
+        l = proc.stdout.readline() # This blocks until it receives a newline.
+         
+        if l != b'':
 
             progressBar.setFormat(l.decode('UTF-8'))
             progressBar.setValue(i)
             i += 1
             app.processEvents()
 
-        global graphs
+    global graphs
+    global pointerList
 
-        import pickle
-        with open('results.temp','rb') as f:
-            graphs = pickle.load(f)
-            drawResults()
+    import pickle
+    with open('results.temp','rb') as f:
 
-        import os
-        os.remove('results.temp')
+        graphs = pickle.load(f)
+        drawResults()
 
-cont.clicked.connect(contButton)
+    import os
+    os.remove('results.temp')
+
+analyze.clicked.connect(analyzeButton)
 
 def drawResults():
 
-    import internal_utility as iu
+    global half_h, c, onsets
 
-    (frequencies, detection) = (graphs[4],  graphs[5])
-    (peaks, threshold) = iu.peaks(detection, 5, 1)
-    onsets = [ i / len(detection) for i in peaks ]
+    frequencies = graphs[4]
 
     maxf = np.amax(frequencies)
     minf = np.amin([i for i in frequencies if i != 0])
@@ -175,15 +189,75 @@ def drawResults():
     p1.plot(frequencies, pen=pg.mkPen('k', width=2))
     p1.setYRange(minf - 10 if minf>10 else 0, maxf+10)
 
+    updateThreshold()
+
+    thresholdGroup.setEnabled(True)
+    analyze.setEnabled(True)
+    midi.setEnabled(True)
+
+    app.processEvents()
+
+def updateThreshold():
+
+    p2.clear()
+    
+    detection = graphs[5]
+    (peaks, threshold) = iu.peaks(detection, half_h, c)
+
+    global onsets
+    onsets = [ i / len(detection) for i in peaks ]
+
     p2.plot(detection, pen=pg.mkPen('c', width=2), name="Detection function")
     p2.plot(threshold, pen=pg.mkPen('r', width=2), name="Dynamic Threshold")
 
     for p in peaks:
         p2.addItem(pg.InfiniteLine(p, pen=pg.mkPen('w', width=1)))
 
-    thresholdGroup.setEnabled(True)
+def upButton():
+    global c
+    c += 0.01
+    cLabel.setText('c = ' + str(c))
+    updateThreshold()
 
-    app.processEvents()
+def downButton():
+    global c
+    c  -= 0.01
+    cLabel.setText('c = ' + str(c))    
+    updateThreshold()
+
+def flatButton():
+    global half_h
+    half_h += 1
+    hLabel.setText('h = ' + str(half_h))    
+    updateThreshold()
+
+def steepButton():
+    global half_h
+    half_h -= 1
+    hLabel.setText('h = ' + str(half_h))   
+    updateThreshold()
+
+up.clicked.connect(upButton)
+down.clicked.connect(downButton)
+flat.clicked.connect(flatButton)
+steep.clicked.connect(steepButton)
+
+def midiButton():
+
+    from ctypes import cdll, c_void_p, c_double, c_uint, cast
+
+    mylib = cdll.LoadLibrary('target\debug\mylib.dll')
+
+    (frequencies, detection) = (graphs[4],  graphs[5])
+    (peaks, threshold) = iu.peaks(detection, half_h, c)
+    
+    mylib.create_midi((c_uint * len(frequencies))(*frequencies), len(frequencies),
+                     (c_double * len(onsets))(*onsets), len(onsets),
+                     file_path.encode('UTF-8'))
+
+    exec(open('spectrogram.py').read(), globals(), locals())
+
+midi.clicked.connect(midiButton)
 
 if __name__ == '__main__':
     import sys
