@@ -1,128 +1,60 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import internal_utility as iu
-from ctypes import cast, c_void_p, c_double, c_uint
 
-def add_subplot_zoom(figure):
+print ('drawing results...')
+plt.switch_backend('TkAgg')
 
-    zoomed_axes = [None]
+maxf = np.amax(frequencies)
+minf = np.amin([i for i in frequencies if i != 0])
 
-    def on_click(event):
-        ax = event.inaxes
+fig = plt.figure()
 
-        if ax is None:
-            return
+images = []
+for i in range(4):
+    ax = fig.add_subplot(5,1,i+1)
+    ax.imshow(np.transpose(graphs[i]), cmap='inferno', aspect='auto')
+    ax.set_ylabel('Frequency(Hz)')
+    ax.invert_yaxis()
+    ax.set_xticks([])
+    images.append(ax)
 
-        if event.button != 3:
-            return
+images[0].set_title('Narrowband')
+images[1].set_title('Wideband')
+images[2].set_title('Combined')
+images[3].set_title('Harmonic Product Spectrum')
 
-        if (zoomed_axes[0] is None):
+scale = np.divide(graphs[1].shape[1], graphs[0].shape[1])
+lim = [int((minf - 10 if minf>10 else 0)/scale), int((maxf+10)/scale)]
 
-            zoomed_axes[0] = (ax, ax.get_position(), ax.get_ylim())
-            ax.set_position([0.04, 0.05, 0.93, 0.92])
-            
-            if ax.get_title() != 'Onset Detection Function':
-                ax.set_ylim([0, possible_ymax[ax]])
+images[0].set_ylim(lim)
+images[1].set_ylim([minf - 10 if minf>10 else 0, maxf+10])
+images[2].set_ylim([minf - 10 if minf>10 else 0, maxf+10])
+images[3].set_ylim([minf - 10 if minf>10 else 0, maxf+10])
 
-            # hide all the other axes...
-            for axis in event.canvas.figure.axes:
-                if axis is not ax:
-                    axis.set_visible(False)
+l1, = images[3].plot(frequencies, '-w', label='max')
+images[3].set_xlim(xmax=len(frequencies))
+images[3].legend(handles=[l1])
 
-        else:
-            # restore the original state
-            zoomed_axes[0][0].set_position(zoomed_axes[0][1])
-            zoomed_axes[0][0].set_ylim(zoomed_axes[0][2])            
-            zoomed_axes[0] = None
+ax1 = fig.add_subplot(5,1,5)
+ax1.set_yticks([])
 
-            # make other axes visible again
-            for axis in event.canvas.figure.axes:
-                axis.set_visible(True)
+l2, = ax1.plot(detection, '-c', label='onset detection')
+for tick in ax1.get_xticklabels():
+    tick.set_rotation(90)
 
-        # redraw to make changes visible.
-        event.canvas.draw()
+for p in peaks:
+    ax1.axvline(x=p)
 
-    figure.canvas.mpl_connect('button_press_event', on_click)
+l3, = ax1.plot(threshold, '-r', label='dynamic threshold')
+ax1.set_xticks(peaks)
+ax1.legend(handles=[l2,l3])
 
-possible_ymax = {} 
+ax1.set_title('Onset Detection Function')
+ax1.set_xlim(xmin=0, xmax= len(detection))
 
-def draw(results, mylib, half_h, c1, file_name):
+plt.subplots_adjust(0.04, 0.05, 0.97, 0.97, 0.13, 0.20)
 
-    graphs = iu.from_ffi(results, mylib)  
-    frequencies = graphs[4]
-    detection = graphs[5]
+plt.get_current_fig_manager().window.state('zoomed')
+fig.canvas.set_window_title('Music Analysis')
 
-    peaks = iu.peaks(detection, half_h, c1)
-    onsets = [ i / len(detection) for i in peaks[0] ]
-
-    print ('creating midi file...')  
-    mylib.create_midi((c_uint * len(frequencies))(*frequencies), len(frequencies),
-                      (c_double * len(onsets))(*onsets), len(onsets),
-                      file_name.encode('UTF-8'))
-
-    print ('drawing results...')
-    plt.switch_backend('TkAgg')
-
-    maxf = np.amax(frequencies)
-    minf = np.amin([i for i in frequencies if i != 0])
-
-    fig = plt.figure()
-    add_subplot_zoom(fig)
-
-    images = []
-    for i in range(4):
-        ax = fig.add_subplot(5,1,i+1)
-        ax.imshow(np.transpose(graphs[i]), cmap='inferno', aspect='auto')
-        ax.set_ylabel('Frequency(Hz)')
-        ax.invert_yaxis()
-        ax.set_xticks([])
-        images.append(ax)
-        possible_ymax[ax] = ax.get_ylim()[1]
-
-    images[0].set_title('Narrowband')
-    images[1].set_title('Wideband')
-    images[2].set_title('Combined')
-    images[3].set_title('Harmonic Product Spectrum')
-
-    scale = np.divide(graphs[1].shape[1], graphs[0].shape[1])
-    lim = [int((minf - 10 if minf>10 else 0)/scale), int((maxf+10)/scale)]
-
-    images[0].set_ylim(lim)
-    images[1].set_ylim([minf - 10 if minf>10 else 0, maxf+10])
-    images[2].set_ylim([minf - 10 if minf>10 else 0, maxf+10])
-    images[3].set_ylim([minf - 10 if minf>10 else 0, maxf+10])
-
-    l1, = images[3].plot(frequencies, '-w', label='max')
-    images[3].set_xlim(xmax=len(frequencies))
-    images[3].legend(handles=[l1])
-
-    ax1 = fig.add_subplot(5,1,5)
-    ax1.set_yticks([])
-
-    l2, = ax1.plot(detection, '-c', label='onset detection')
-    for tick in ax1.get_xticklabels():
-        tick.set_rotation(90)
-
-    for p in peaks[0]:
-        ax1.axvline(x=p)
-
-    l3, = ax1.plot(peaks[1], '-r', label='dynamic threshold')
-    ax1.set_xticks(peaks[0])
-    ax1.legend(handles=[l2,l3])
-
-    ax1.set_title('Onset Detection Function')
-    ax1.set_xlim(xmin=0, xmax= len(detection))
-
-    plt.subplots_adjust(0.04, 0.05, 0.97, 0.97, 0.13, 0.20)
-
-    plt.get_current_fig_manager().window.state('zoomed')
-    fig.canvas.set_window_title('Music Analysis')
-
-    plt.show()
-
-    mylib.clean2d.argtypes = [c_void_p]
-    mylib.clean1d.argtypes = [c_void_p]
-
-    for i,g in enumerate(iu.graphs.pointers):
-        ptr = cast(g, c_void_p)
-        mylib.clean2d(ptr) if i < 4 else mylib.clean1d(ptr)
+plt.show()
