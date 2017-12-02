@@ -8,19 +8,19 @@ class C_Tuple(Structure):
 class FFI_Spectrogram(Structure):
     _fields_ = [("data", POINTER(POINTER(c_double))), ("shape", C_Tuple)]
 
-class Graphs(Structure):
+class PointerList(Structure):
     _fields_ = [("pointers", c_void_p*6)]
 
-graphs = Graphs()
+pointerList = PointerList()
 
 def from_ffi(results):
     
-    global graphs
-    graphs = cast(results, POINTER(Graphs)).contents
+    global pointerList
+    pointerList = cast(results, POINTER(PointerList)).contents
 
     spect_list = []
 
-    for i,g in enumerate(graphs.pointers):
+    for i,g in enumerate(pointerList.pointers):
         if i < 4:
             spect_list.append(get_result(g))
         elif i == 4:
