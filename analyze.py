@@ -27,7 +27,7 @@ parser.add_argument('-o', '--onset-window',
 
 parser.add_argument('-c', '--threshold-constant',
     help='constant value for scaling the threshold for onset detection',
-    required=False, default=1, type=float)
+    required=False, default=1.05, type=float)
 
 parser.add_argument('-i', '--from-interface',
     help='flag for determine if the script is called from the interface',
@@ -61,15 +61,15 @@ if not args['from_interface']:
 
     exec(open('spectrogram.py').read(), globals(), locals())
 
-    mylib.clean2d.argtypes = [c_void_p]
-    mylib.clean1d.argtypes = [c_void_p]
-
-    for i,g in enumerate(iu.graphs.pointers):
-        ptr = cast(g, c_void_p)
-        mylib.clean2d(ptr) if i < 4 else mylib.clean1d(ptr)
-
 else:
 
     import pickle
     with open('results.temp', 'wb') as f:
-        pickle.dump(graphs, f)
+        pickle.dump( graphs, f )
+
+mylib.clean2d.argtypes = [c_void_p]
+mylib.clean1d.argtypes = [c_void_p]
+
+for i,g in enumerate(iu.pointerList.pointers):
+    ptr = cast(g, c_void_p)
+    mylib.clean2d(ptr) if i < 4 else mylib.clean1d(ptr)                             
