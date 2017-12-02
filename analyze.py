@@ -1,7 +1,7 @@
-from ctypes import cdll, c_void_p
+from ctypes import cdll, c_void_p, c_double, c_uint, cast
 import argparse
 import time
-import spectrogram
+import internal_utility as iu
 
 parser = argparse.ArgumentParser(description='Converts a monophonic wav file into MIDI')
 
@@ -29,6 +29,10 @@ parser.add_argument('-c', '--threshold-constant',
     help='constant value for scaling the threshold for onset detection',
     required=False, default=1, type=float)
 
+parser.add_argument('-i', '--from-interface',
+    help='flag for determine if the script is called from the interface',
+    required=False, default=False, type=bool)
+
 args = vars(parser.parse_args())
 
 start_time = time.time()
@@ -36,6 +40,36 @@ start_time = time.time()
 mylib = cdll.LoadLibrary('target\debug\mylib.dll')
 mylib.analyze.restype = c_void_p
 
-results = mylib.analyze(args['file_name'].encode('UTF-8'), args['window'], args['highpass'], args['hps_rate'])
-print("Finished in %s seconds" % int(time.time() - start_time))    
-spectrogram.draw(results, mylib, args['onset_window'], args['threshold_constant'], args['file_name'])
+results = mylib.analyze(args['file_name'].encode('UTF-8'), args['window'], 
+                        args['highpass'], args['hps_rate'])
+
+graphs = iu.from_ffi(results)  
+
+
+if not args['from_interface']:
+
+    (frequencies, detection) = (graphs[4],  graphs[5])
+
+    (peaks, threshold) = iu.peaks(detection, args['onset_window'], args['threshold_constant'])
+    onsets = [ i / len(detection) for i in peaks ]
+
+    print("Finished in %s seconds" % int(time.time() - start_time))    
+
+    mylib.create_midi((c_uint * len(frequencies))(*frequencies), len(frequencies),
+                    (c_double * len(onsets))(*onsets), len(onsets),
+                    args['file_name'].encode('UTF-8'))
+
+    exec(open('spectrogram.py').read(), globals(), locals())
+
+    mylib.clean2d.argtypes = [c_void_p]
+    mylib.clean1d.argtypes = [c_void_p]
+
+    for i,g in enumerate(iu.graphs.pointers):
+        ptr = cast(g, c_void_p)
+        mylib.clean2d(ptr) if i < 4 else mylib.clean1d(ptr)
+
+else:
+
+    import pickle
+    with open('results.temp', 'wb') as f:
+        pickle.dump(graphs, f)
