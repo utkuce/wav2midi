@@ -1,6 +1,6 @@
 SINGLE_FILE = 0
 
-COMMAND := pyinstaller --add-binary "target/debug/stft_rust.dll;." analyze.py
+COMMAND := pyinstaller --add-binary "target/debug/mylib.dll;." analyze.py
 
 ifeq ($(SINGLE_FILE), 1)
 COMMAND += --onefile
