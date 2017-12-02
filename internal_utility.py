@@ -13,7 +13,7 @@ class Graphs(Structure):
 
 graphs = Graphs()
 
-def from_ffi(results, mylib):
+def from_ffi(results):
     
     global graphs
     graphs = cast(results, POINTER(Graphs)).contents
