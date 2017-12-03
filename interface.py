@@ -52,9 +52,9 @@ generalGroup = QtGui.QGroupBox('General')
 generalLayout = QtGui.QVBoxLayout()
 generalGroup.setLayout(generalLayout)
 
-browse = QtGui.QPushButton('Browse')
+browse = QtGui.QPushButton('Select File')
 analyze = QtGui.QPushButton('Analyze', enabled=False)
-midi = QtGui.QPushButton('MIDI', enabled=False)
+midi = QtGui.QPushButton('Create MIDI', enabled=False)
 
 generalLayout.addWidget(browse)
 generalLayout.addWidget(analyze)
@@ -73,6 +73,8 @@ steep = QtGui.QPushButton('Steep')
 
 cLabel = QtGui.QLabel('c = 1.05')
 hLabel = QtGui.QLabel('half_h = 5')
+cLabel.setAlignment(QtCore.Qt.AlignCenter)
+hLabel.setAlignment(QtCore.Qt.AlignCenter)
 
 thresholdLayout.addWidget(up,0,0)
 thresholdLayout.addWidget(down,1,0)
@@ -98,13 +100,30 @@ paramLayout.addWidget(window, 1, 1)
 
 paramLayout.addWidget(QtGui.QLabel("Highpass"), 2, 0)
 highpass = pg.SpinBox(value=30, int=True, bounds=[1, 20000], step=10)
+highpass.setAccelerated(True)
 paramLayout.addWidget(highpass, 2, 1)
 
 ####
 
+optionsGroup = QtGui.QGroupBox("Options", enabled=False)
+optionsLayout = QtGui.QGridLayout()
+optionsGroup.setLayout(optionsLayout)
+
+onsetCheck = QtGui.QCheckBox("Onset Detection", checked=True)
+optionsLayout.addWidget(onsetCheck)
+
+begCheck = QtGui.QCheckBox("Replace beginning\nwith silence")
+optionsLayout.addWidget(begCheck)
+
+spectsCheck = QtGui.QCheckBox("Draw Results", checked=True)
+optionsLayout.addWidget(spectsCheck)
+
+####
+
 buttons.addWidget(generalGroup, row=0, col=0)
-buttons.addWidget(thresholdGroup, row=0, col=2)
-buttons.addWidget(paramGroup, row=0, col=3)
+buttons.addWidget(thresholdGroup, row=0, col=3)
+buttons.addWidget(paramGroup, row=0, col=2)
+buttons.addWidget(optionsGroup, row=0, col=4)
 
 file_path = None
 
@@ -122,6 +141,9 @@ def browseClick(self):
         paramGroup.setEnabled(True)
         analyze.setEnabled(True)
         thresholdGroup.setEnabled(False)
+        optionsGroup.setEnabled(False)
+        midi.setEnabled(False)
+        begCheck.setCheckState(0)
 
         p1.clear()
         p2.clear()
@@ -137,8 +159,7 @@ onsets = []
 
 def analyzeButton():
 
-    analyze.setEnabled(False)
-    paramGroup.setEnabled(False)
+    buttons.setEnabled(False)
     progressBar.setEnabled(True)
     progressBar.setMaximum(8)
 
@@ -171,6 +192,8 @@ def analyzeButton():
     import os
     os.remove('results.temp')
 
+    begCheck.setCheckState(0)    
+
 analyze.clicked.connect(analyzeButton)
 
 def drawResults():
@@ -191,9 +214,10 @@ def drawResults():
 
     updateThreshold()
 
+    buttons.setEnabled(True)
     thresholdGroup.setEnabled(True)
-    analyze.setEnabled(True)
-    midi.setEnabled(True)
+    optionsGroup.setEnabled(True)
+    midi.setEnabled(True)    
 
     app.processEvents()
 
@@ -204,14 +228,14 @@ def updateThreshold():
     detection = graphs[5]
     (peaks, threshold) = iu.peaks(detection, half_h, c)
 
-    global onsets
-    onsets = [ i / len(detection) for i in peaks ]
-
     p2.plot(detection, pen=pg.mkPen('c', width=2), name="Detection function")
     p2.plot(threshold, pen=pg.mkPen('r', width=2), name="Dynamic Threshold")
 
     for p in peaks:
         p2.addItem(pg.InfiniteLine(p, pen=pg.mkPen('w', width=1)))
+
+    global onsets
+    onsets = [ i / len(detection) for i in peaks ]
 
 def upButton():
     global c
@@ -255,9 +279,59 @@ def midiButton():
                      (c_double * len(onsets))(*onsets), len(onsets),
                      file_path.encode('UTF-8'))
 
-    exec(open('spectrogram.py').read(), globals(), locals())
+    if (spectsCheck.isChecked()):
+        exec(open('spectrogram.py').read(), globals(), locals())
 
 midi.clicked.connect(midiButton)
+
+def onsetCheckButton():
+    
+    if onsetCheck.isChecked():
+
+        begCheck.setEnabled(True)
+        updateThreshold()
+        thresholdGroup.setEnabled(True)
+
+    else:
+
+        begCheck.setEnabled(False)
+        begCheck.setCheckState(0)
+
+        p2.clear()
+
+        detection = graphs[5]
+        (peaks, threshold) = iu.peaks(detection, half_h, c)
+       
+        detection = graphs[5]
+        (peaks, threshold) = iu.peaks(detection, half_h, c)
+        p2.plot(detection, pen=pg.mkPen('c', width=2), name="Detection function")
+        p2.plot(threshold, pen=pg.mkPen('r', width=2), name="Dynamic Threshold")
+
+        thresholdGroup.setEnabled(False)
+
+onsetCheck.clicked.connect(onsetCheckButton)
+
+save = []
+def begCheckButton():
+
+    end = int(len(graphs[4])*onsets[0])
+    global save
+    
+    if begCheck.isChecked():
+    
+        save = list(graphs[4])
+        
+        for i in range(0, end):
+            graphs[4][i] = 0
+
+    else:
+
+        graphs[4] = save
+
+    drawResults()
+
+
+begCheck.clicked.connect(begCheckButton)
 
 if __name__ == '__main__':
     import sys
