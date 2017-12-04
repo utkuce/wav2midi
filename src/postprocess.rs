@@ -128,5 +128,9 @@ pub fn write_midi(song: Song)
     let writer = SMFWriter::from_smf(smf);
  
     let result = writer.write_to_file(Path::new(format!("{}{}", song.name,".mid").as_str()));
-    result.unwrap();
+    if result.is_err()
+    {
+        let song_ = Song {notes: song.notes, name: song.name+"_", division: song.division};
+        write_midi(song_);
+    }
 }
