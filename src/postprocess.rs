@@ -95,8 +95,9 @@ fn mode(elements: &[(String,u8)]) -> &(String,u8) {
         .expect("Cannot compute the mode of zero elements")
 }
 
-pub fn write_midi(song: Song)
+pub fn write_midi(song: Song) -> String
 {   
+    let mut midi_filename = song.name.clone();
     let mut events : Vec<TrackEvent> = Vec::new();
 
     let mut previous_duration = 0;
@@ -131,6 +132,8 @@ pub fn write_midi(song: Song)
     if result.is_err()
     {
         let song_ = Song {notes: song.notes, name: song.name+"_", division: song.division};
-        write_midi(song_);
+        midi_filename = write_midi(song_);
     }
+
+    return midi_filename;
 }

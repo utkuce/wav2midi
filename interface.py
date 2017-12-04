@@ -268,16 +268,21 @@ steep.clicked.connect(steepButton)
 
 def midiButton():
 
-    from ctypes import cdll, c_void_p, c_double, c_uint, cast
+    from ctypes import cdll, c_void_p, c_double, c_uint, cast, c_char_p
 
     mylib = cdll.LoadLibrary('target\debug\mylib.dll')
 
     (frequencies, detection) = (graphs[4],  graphs[5])
     (peaks, threshold) = iu.peaks(detection, half_h, c)
     
-    mylib.create_midi((c_uint * len(frequencies))(*frequencies), len(frequencies),
-                     (c_double * len(onsets))(*onsets), len(onsets),
-                     file_path.encode('UTF-8'), not onsetCheck.isChecked())
+    mylib.create_midi.restype = c_char_p
+    midi_file = mylib.create_midi((c_uint * len(frequencies))(*frequencies), len(frequencies),
+                                  (c_double * len(onsets))(*onsets), len(onsets),
+                                   file_path.encode('UTF-8'), not onsetCheck.isChecked())
+
+    import os
+    base = os.path.basename(midi_file.decode('UTF-8'))
+    os.startfile(os.path.splitext(base)[0] + ".mid")     
 
     if (spectsCheck.isChecked()):
         exec(open('spectrogram.py').read(), globals(), locals())

@@ -10,6 +10,7 @@ use arrayfire::{Array, Dim4, Seq};
 
 use std::f64;
 use std::os::raw;
+use std::ffi::CString;
 use std::path::Path;
 use std::slice;
 
@@ -133,7 +134,7 @@ fn print_audio_details(reader: &hound::WavReader<std::io::BufReader<std::fs::Fil
 #[no_mangle]
 pub extern fn create_midi(frequencies: *mut raw::c_uint, f_len: raw::c_uint,
                            onsets: *mut raw::c_double, o_len: raw::c_uint, 
-                           file_name: *const raw::c_char, onset_detection: bool)
+                           file_name: *const raw::c_char, onset_detection: bool) -> *const raw::c_char
 {
     let name: String = unsafe { std::ffi::CStr::from_ptr(file_name).to_string_lossy().into_owned() };
     let reader = hound::WavReader::open(&name).unwrap();
@@ -151,5 +152,7 @@ pub extern fn create_midi(frequencies: *mut raw::c_uint, f_len: raw::c_uint,
     let song = postprocess::Song {notes: notes, name: midi_name, division: division};
 
     //println!("{}", song);
-    postprocess::write_midi(song);
+    let midi_filename = postprocess::write_midi(song);
+    println!("writing to {}.mid", midi_filename);
+    CString::new(midi_filename).unwrap().into_raw()
 }
