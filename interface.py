@@ -13,7 +13,7 @@ pg.setConfigOptions(antialias=True)
 
 win.setCentralWidget(area)
 win.resize(1366,768)
-win.setWindowTitle("Note Analysis")
+win.setWindowTitle("Wav To Midi ♫")
 win.showMaximized()
 
 # addDock order is nontrivial
@@ -23,21 +23,35 @@ area.addDock(controls, 'bottom')
 buttons = pg.LayoutWidget()
 controls.addWidget(buttons)
 
-graphs = Dock("Graphs", hideTitle=True)
-area.addDock(graphs, 'top', controls)
+graphsDock1 = Dock("Graphs Tab1")
+area.addDock(graphsDock1, 'top', controls)
 p1 = pg.PlotWidget(title="Frequencies")
 p2 = pg.PlotWidget(title="Onset Detection")
-graphs.addWidget(p1)
-graphs.addWidget(p2)
+graphsDock1.addWidget(p1)
+graphsDock1.addWidget(p2)
 
-progress = Dock("Progress", size=(1, 1))
-area.addDock(progress, 'left', controls)
+progressDock = Dock("Progress", size=(1, 1))
+area.addDock(progressDock, 'left', controls)
+
 progressBar = QtGui.QProgressBar(enabled=False)
 progressBar.setAlignment(QtCore.Qt.AlignCenter)
 progressBar.setFormat("Not started yet")
 progressBar.setValue(0)
-progress.addWidget(progressBar)
-progress.layout.setContentsMargins(50,50,50,50)
+
+progressDock.addWidget(progressBar)
+progressDock.layout.setContentsMargins(50,50,50,50)
+
+graphsDock2 = Dock("Graphs Tab2")
+area.addDock(graphsDock2, 'below', graphsDock1)
+p3 = pg.PlotWidget(title="Narrowband Spectrogram")
+graphsDock2.addWidget(p3)
+
+graphsDock3 = Dock("Graphs Tab3")
+area.addDock(graphsDock3, 'below', graphsDock2)
+p4 = pg.PlotWidget(title="Wideband Spectrogram")
+graphsDock3.addWidget(p4)
+
+area.moveDock(graphsDock1, 'above', graphsDock2)
 
 ####
 
@@ -115,7 +129,7 @@ optionsLayout.addWidget(onsetCheck)
 begCheck = QtGui.QCheckBox("Replace beginning\nwith silence")
 optionsLayout.addWidget(begCheck)
 
-spectsCheck = QtGui.QCheckBox("Draw Results")
+spectsCheck = QtGui.QCheckBox("Draw with Matplotlib")
 optionsLayout.addWidget(spectsCheck)
 
 ####
@@ -127,6 +141,21 @@ buttons.addWidget(optionsGroup, row=0, col=4)
 
 file_path = None
 
+def fileSelected():
+
+    progressBar.setFormat(file_path)        
+    paramGroup.setEnabled(True)
+    analyze.setEnabled(True)
+    thresholdGroup.setEnabled(False)
+    optionsGroup.setEnabled(False)
+    midi.setEnabled(False)
+    begCheck.setCheckState(0)
+
+    p1.clear()
+    p2.clear()
+    p3.clear()
+    p4.clear()
+
 def browseClick(self):
 
     file_dialog = QtGui.QFileDialog()
@@ -134,19 +163,10 @@ def browseClick(self):
     file_dialog.selectNameFilter("Wav files (*.wav)")
 
     if file_dialog.exec_():
-
         global file_path
         file_path = file_dialog.selectedFiles()[0]
-        progressBar.setFormat(file_path)        
-        paramGroup.setEnabled(True)
-        analyze.setEnabled(True)
-        thresholdGroup.setEnabled(False)
-        optionsGroup.setEnabled(False)
-        midi.setEnabled(False)
-        begCheck.setCheckState(0)
-
-        p1.clear()
-        p2.clear()
+        fileSelected()
+        
 
 browse.clicked.connect(browseClick)
 
@@ -205,12 +225,20 @@ def drawResults():
     maxf = np.amax(frequencies)
     minf = np.amin([i for i in frequencies if i != 0])
 
-    spectrogram = pg.ImageItem(border='w')
-    spectrogram.setImage(graphs[3])
-    p1.addItem(spectrogram)
+    spectrogram1 = pg.ImageItem(border='w')
+    spectrogram1.setImage(graphs[3])
+    p1.addItem(spectrogram1)
 
     p1.plot(frequencies, pen=pg.mkPen('k', width=2))
     p1.setYRange(minf - 10 if minf>10 else 0, maxf+10)
+
+    spectrogram2 = pg.ImageItem(border='w')
+    spectrogram2.setImage(graphs[0])
+    p3.addItem(spectrogram2)
+
+    spectrogram3 = pg.ImageItem(border='w')
+    spectrogram3.setImage(graphs[1])
+    p4.addItem(spectrogram3)
 
     updateThreshold()
 
@@ -257,7 +285,8 @@ def flatButton():
 
 def steepButton():
     global half_h
-    half_h -= 1
+    if half_h > 1:
+        half_h -= 1
     hLabel.setText('h = ' + str(half_h))   
     updateThreshold()
 
