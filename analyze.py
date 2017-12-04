@@ -30,8 +30,11 @@ parser.add_argument('-c', '--threshold-constant',
     required=False, default=1.05, type=float)
 
 parser.add_argument('-i', '--from-interface',
-    help='flag for determine if the script is called from the interface',
-    required=False, default=False, type=bool)
+    help='flag to determine if the script is called from the interface',
+    action='store_true')
+
+parser.add_argument('-n', '--no-onsets',
+    help='flag to use onset detection or not', action='store_true')
 
 args = vars(parser.parse_args())
 
@@ -57,7 +60,7 @@ if not args['from_interface']:
 
     mylib.create_midi((c_uint * len(frequencies))(*frequencies), len(frequencies),
                     (c_double * len(onsets))(*onsets), len(onsets),
-                    args['file_name'].encode('UTF-8'))
+                    args['file_name'].encode('UTF-8'), args['no_onsets'])
 
     exec(open('spectrogram.py').read(), globals(), locals())
 

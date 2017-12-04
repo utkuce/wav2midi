@@ -24,7 +24,7 @@ $ cargo build
 then, to analyze a file:
 ```
 $ analyze.py [-h] -f FILE_NAME [-w WINDOW] [-p HIGHPASS] [-r HPS_RATE]
-          [-o ONSET_WINDOW] [-c THRESHOLD_CONSTANT] [-i FROM_INTERFACE]
+          [-o ONSET_WINDOW] [-c THRESHOLD_CONSTANT] [-i] [-n]
 ```
 Replace `analyze.py` with `analyze` for the standalone version
 

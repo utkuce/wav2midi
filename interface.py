@@ -95,7 +95,7 @@ hps = pg.SpinBox(value=3, int=True, bounds=[1, None], step=1)
 paramLayout.addWidget(hps, 0, 1)
 
 paramLayout.addWidget(QtGui.QLabel("Window Size"), 1, 0)
-window = pg.SpinBox(value=12, int=True, bounds=[1, None], step=1)
+window = pg.SpinBox(value=13, int=True, bounds=[1, None], step=1)
 paramLayout.addWidget(window, 1, 1)
 
 paramLayout.addWidget(QtGui.QLabel("Highpass"), 2, 0)
@@ -115,7 +115,7 @@ optionsLayout.addWidget(onsetCheck)
 begCheck = QtGui.QCheckBox("Replace beginning\nwith silence")
 optionsLayout.addWidget(begCheck)
 
-spectsCheck = QtGui.QCheckBox("Draw Results", checked=True)
+spectsCheck = QtGui.QCheckBox("Draw Results")
 optionsLayout.addWidget(spectsCheck)
 
 ####
@@ -166,7 +166,7 @@ def analyzeButton():
     import subprocess
     proc = subprocess.Popen(["python", "analyze.py", "-f", file_path, 
                             "-w", str(window.value()), "-p", str(highpass.value()),
-                            "-r", str(hps.value()), "-i", "true"],stdout=subprocess.PIPE)
+                            "-r", str(hps.value()), "-i"], stdout=subprocess.PIPE)
 
     i = 0
     while proc.poll() is None:
@@ -277,7 +277,7 @@ def midiButton():
     
     mylib.create_midi((c_uint * len(frequencies))(*frequencies), len(frequencies),
                      (c_double * len(onsets))(*onsets), len(onsets),
-                     file_path.encode('UTF-8'))
+                     file_path.encode('UTF-8'), not onsetCheck.isChecked())
 
     if (spectsCheck.isChecked()):
         exec(open('spectrogram.py').read(), globals(), locals())
@@ -296,6 +296,11 @@ def onsetCheckButton():
 
         begCheck.setEnabled(False)
         begCheck.setCheckState(0)
+
+        if len(save) != 0:
+
+            graphs[4] = save
+            drawResults()
 
         p2.clear()
 

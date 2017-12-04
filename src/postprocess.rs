@@ -35,30 +35,48 @@ fn get_pitch(frequency : u32) -> (String, u8)
     return (format!( "{note}{octave}", note = notes[note_index], octave = 4 + offset/12), midi as u8);
 }
 
-pub fn get_notes(frequencies: &[u32], onsets: &[f64]) -> Vec<Note>
+pub fn get_notes(frequencies: &[u32], onsets: &[f64], no_onset: bool) -> Vec<Note>
 {
     let vec : Vec<(String, u8)> = frequencies.iter().map(|freq| get_pitch(*freq)).collect();
     let mut notes : Vec<Note> = Vec::new();
 
-    let mut onsets_clone : Vec<f64> = onsets.clone().to_vec();
-    onsets_clone.push(1.);
-    let mut previous_onset : f64 = 0.;
-    for &onset in &onsets_clone
+    if no_onset
     {
-        let start_index : usize = (frequencies.len() as f64 * previous_onset).round() as usize;
-        let end_index : usize = (frequencies.len() as f64 * onset).round() as usize;
-
-        let interval : &[(String,u8)] = &vec[start_index..end_index];
-
-        let mode = mode(interval);
-        let duration : u64 = end_index as u64 - start_index as u64;
-
-        notes.push( Note {
-            name: mode.0.clone(), midi: mode.1.clone(),  duration: duration
-        });
-
-        previous_onset = onset;
+        let mut last: usize = 0;
+        for i in 1..vec.len()
+        {
+            if vec[i] != vec[i-1] || i == vec.len()-1 {
+                notes.push( Note { 
+                    name: vec[i-1].0.clone(), midi: vec[i-1].1.clone(), 
+                    duration: (i-last) as u64 
+                } );
+                last = i;
+            }
+        }
     }
+    else
+    {
+        let mut onsets_clone : Vec<f64> = onsets.clone().to_vec();
+        onsets_clone.push(1.);
+        let mut previous_onset : f64 = 0.;
+        for &onset in &onsets_clone
+        {
+            let start_index : usize = (frequencies.len() as f64 * previous_onset).round() as usize;
+            let end_index : usize = (frequencies.len() as f64 * onset).round() as usize;
+
+            let interval : &[(String,u8)] = &vec[start_index..end_index];
+
+            let mode = mode(interval);
+            let duration : u64 = end_index as u64 - start_index as u64;
+
+            notes.push( Note {
+                name: mode.0.clone(), midi: mode.1.clone(),  duration: duration
+            });
+
+            previous_onset = onset;
+        }
+    }
+
 
     return notes;
 }

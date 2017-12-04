@@ -133,7 +133,7 @@ fn print_audio_details(reader: &hound::WavReader<std::io::BufReader<std::fs::Fil
 #[no_mangle]
 pub extern fn create_midi(frequencies: *mut raw::c_uint, f_len: raw::c_uint,
                            onsets: *mut raw::c_double, o_len: raw::c_uint, 
-                           file_name: *const raw::c_char)
+                           file_name: *const raw::c_char, onset_detection: bool)
 {
     let name: String = unsafe { std::ffi::CStr::from_ptr(file_name).to_string_lossy().into_owned() };
     let reader = hound::WavReader::open(&name).unwrap();
@@ -145,7 +145,7 @@ pub extern fn create_midi(frequencies: *mut raw::c_uint, f_len: raw::c_uint,
     let f : &[u32] = unsafe { slice::from_raw_parts(frequencies, f_len as usize) };
     let o : &[f64] = unsafe { slice::from_raw_parts(onsets, o_len as usize) };    
 
-    let notes = postprocess::get_notes(&f.to_vec(), &o.to_vec());
+    let notes = postprocess::get_notes(&f.to_vec(), &o.to_vec(), onset_detection);
     
     let midi_name = String::from(Path::new(name.as_str()).file_stem().unwrap().to_str().unwrap());
     let song = postprocess::Song {notes: notes, name: midi_name, division: division};
