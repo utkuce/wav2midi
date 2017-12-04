@@ -74,7 +74,7 @@ def peaks(onset, half_h, c1):
         dynamic_threshold.insert(0, dynamic_threshold[0])
     
     i = 0
-    while i < len(dynamic_threshold):
+    while i < len(dynamic_threshold) and i < len(onset):
         if onset[i] > dynamic_threshold[i] and i in maximas_indices:
             if set(range(i-half_h, i+half_h)).isdisjoint(peaks):
                 peaks.append(i)
