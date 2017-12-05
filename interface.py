@@ -29,6 +29,7 @@ p1 = pg.PlotWidget(title="Frequencies")
 p2 = pg.PlotWidget(title="Onset Detection")
 graphsDock1.addWidget(p1)
 graphsDock1.addWidget(p2)
+graphsDock1.layout.setContentsMargins(5,5,5,5)
 
 progressDock = Dock("Progress", size=(1, 1))
 area.addDock(progressDock, 'left', controls)
@@ -45,11 +46,13 @@ graphsDock2 = Dock("Graphs Tab2")
 area.addDock(graphsDock2, 'below', graphsDock1)
 p3 = pg.PlotWidget(title="Narrowband Spectrogram")
 graphsDock2.addWidget(p3)
+graphsDock2.layout.setContentsMargins(5,5,5,5)
 
 graphsDock3 = Dock("Graphs Tab3")
 area.addDock(graphsDock3, 'below', graphsDock2)
 p4 = pg.PlotWidget(title="Wideband Spectrogram")
 graphsDock3.addWidget(p4)
+graphsDock3.layout.setContentsMargins(5,5,5,5)
 
 area.moveDock(graphsDock1, 'above', graphsDock2)
 
@@ -129,8 +132,8 @@ optionsLayout.addWidget(onsetCheck)
 begCheck = QtGui.QCheckBox("Replace beginning\nwith silence")
 optionsLayout.addWidget(begCheck)
 
-spectsCheck = QtGui.QCheckBox("Draw with Matplotlib")
-optionsLayout.addWidget(spectsCheck)
+matplotlib = QtGui.QPushButton("Draw with Matplotlib")
+optionsLayout.addWidget(matplotlib)
 
 ####
 
@@ -235,17 +238,19 @@ def drawResults():
     spectrogram2 = pg.ImageItem(border='w')
     spectrogram2.setImage(graphs[0])
     p3.addItem(spectrogram2)
+    p3.setTitle("Narrowband Spectrogram (Window Size: " + str(2**window.value()) +")")
 
     spectrogram3 = pg.ImageItem(border='w')
     spectrogram3.setImage(graphs[1])
     p4.addItem(spectrogram3)
+    p4.setTitle("Wideband Spectrogram (Window Size: 44100)")
 
     updateThreshold()
 
     buttons.setEnabled(True)
     thresholdGroup.setEnabled(True)
     optionsGroup.setEnabled(True)
-    midi.setEnabled(True)    
+    midi.setEnabled(True)
 
     app.processEvents()
 
@@ -313,9 +318,6 @@ def midiButton():
     base = os.path.basename(midi_file.decode('UTF-8'))
     os.startfile(os.path.splitext(base)[0] + ".mid")     
 
-    if (spectsCheck.isChecked()):
-        exec(open('spectrogram.py').read(), globals(), locals())
-
 midi.clicked.connect(midiButton)
 
 def onsetCheckButton():
@@ -330,6 +332,7 @@ def onsetCheckButton():
 
         begCheck.setEnabled(False)
         begCheck.setCheckState(0)
+        thresholdGroup.setEnabled(False)        
 
         if len(save) != 0:
 
@@ -346,7 +349,6 @@ def onsetCheckButton():
         p2.plot(detection, pen=pg.mkPen('c', width=2), name="Detection function")
         p2.plot(threshold, pen=pg.mkPen('r', width=2), name="Dynamic Threshold")
 
-        thresholdGroup.setEnabled(False)
 
 onsetCheck.clicked.connect(onsetCheckButton)
 
@@ -371,6 +373,14 @@ def begCheckButton():
 
 
 begCheck.clicked.connect(begCheckButton)
+
+def matplotlibButton():
+
+    (frequencies, detection) = (graphs[4],  graphs[5])
+    (peaks, threshold) = iu.peaks(detection, half_h, c)
+    exec(open('spectrogram.py').read(), globals(), locals())
+
+matplotlib.clicked.connect(matplotlibButton)
 
 if __name__ == '__main__':
     import sys
