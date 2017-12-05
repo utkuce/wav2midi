@@ -171,6 +171,8 @@ def fileSelected():
     midi.setEnabled(False)
     begCheck.setCheckState(0)
     playWav.setEnabled(True)
+    playMidi.setEnabled(False)
+    matplotlib.setEnabled(False)
 
     p1.clear()
     p2.clear()
