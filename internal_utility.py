@@ -108,7 +108,7 @@ def octave_correction(frequencies, wideband):
         i = 2
         current_max = f
         while f*i < wideband.shape[1]/2:
-            if wideband[index][f*i] > wideband[index][current_max]:
+            if wideband[index][f*i] *0.9 > wideband[index][current_max]:
                 current_max = f*i
             i += 1
 
