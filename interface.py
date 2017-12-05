@@ -2,6 +2,7 @@ import pyqtgraph as pg
 import numpy as np
 from pyqtgraph.Qt import QtGui, QtCore
 from pyqtgraph.dockarea import *
+import os
 import internal_utility as iu
 
 
@@ -132,8 +133,23 @@ optionsLayout.addWidget(onsetCheck)
 begCheck = QtGui.QCheckBox("Replace beginning\nwith silence")
 optionsLayout.addWidget(begCheck)
 
-matplotlib = QtGui.QPushButton("Draw with Matplotlib")
-optionsLayout.addWidget(matplotlib)
+octave = QtGui.QCheckBox("Octave correction")
+optionsLayout.addWidget(octave)
+
+####
+
+otherGroup = QtGui.QGroupBox("Other")
+otherLayout = QtGui.QGridLayout()
+otherGroup.setLayout(otherLayout)
+
+playWav = QtGui.QPushButton("Play WAV File", enabled=False)
+otherLayout.addWidget(playWav)
+
+playMidi = QtGui.QPushButton("Play MIDI File", enabled=False)
+otherLayout.addWidget(playMidi)
+
+matplotlib = QtGui.QPushButton("Draw with Matplotlib", enabled=False)
+otherLayout.addWidget(matplotlib)
 
 ####
 
@@ -141,6 +157,7 @@ buttons.addWidget(generalGroup, row=0, col=0)
 buttons.addWidget(thresholdGroup, row=0, col=3)
 buttons.addWidget(paramGroup, row=0, col=2)
 buttons.addWidget(optionsGroup, row=0, col=4)
+buttons.addWidget(otherGroup, row=0, col=5)
 
 file_path = None
 
@@ -153,6 +170,7 @@ def fileSelected():
     optionsGroup.setEnabled(False)
     midi.setEnabled(False)
     begCheck.setCheckState(0)
+    playWav.setEnabled(True)
 
     p1.clear()
     p2.clear()
@@ -212,10 +230,10 @@ def analyzeButton():
         graphs = pickle.load(f)
         drawResults()
 
-    import os
     os.remove('results.temp')
 
-    begCheck.setCheckState(0)    
+    begCheck.setCheckState(0)
+    matplotlib.setEnabled(True)
 
 analyze.clicked.connect(analyzeButton)
 
@@ -300,6 +318,8 @@ down.clicked.connect(downButton)
 flat.clicked.connect(flatButton)
 steep.clicked.connect(steepButton)
 
+midi_file = None
+
 def midiButton():
 
     from ctypes import cdll, c_void_p, c_double, c_uint, cast, c_char_p
@@ -308,15 +328,28 @@ def midiButton():
 
     (frequencies, detection) = (graphs[4],  graphs[5])
     (peaks, threshold) = iu.peaks(detection, half_h, c)
+
+    if octave.isChecked():
+
+        frequencies = iu.octave_correction(frequencies, graphs[1])
+        graphs[4] = frequencies
+        p1.plot(frequencies, pen=pg.mkPen('r', width=2))
+        maxf = np.amax(frequencies)
+        minf = np.amin([i for i in frequencies if i != 0])
+        p1.setYRange(minf - 10 if minf>10 else 0, maxf+10)
+        app.processEvents()
     
+    global midi_file
     mylib.create_midi.restype = c_char_p
     midi_file = mylib.create_midi((c_uint * len(frequencies))(*frequencies), len(frequencies),
                                   (c_double * len(onsets))(*onsets), len(onsets),
                                    file_path.encode('UTF-8'), not onsetCheck.isChecked())
 
-    import os
     base = os.path.basename(midi_file.decode('UTF-8'))
-    os.startfile(os.path.splitext(base)[0] + ".mid")     
+    midi_file = os.path.splitext(base)[0] + ".mid"
+    os.startfile(midi_file)
+
+    playMidi.setEnabled(True)
 
 midi.clicked.connect(midiButton)
 
@@ -381,6 +414,16 @@ def matplotlibButton():
     exec(open('spectrogram.py').read(), globals(), locals())
 
 matplotlib.clicked.connect(matplotlibButton)
+
+def playWavButton():
+    os.startfile(file_path)
+
+playWav.clicked.connect(playWavButton)
+
+def playMidiButton():
+    os.startfile(midi_file)
+
+playMidi.clicked.connect(playMidiButton) 
 
 if __name__ == '__main__':
     import sys
