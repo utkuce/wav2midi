@@ -95,3 +95,23 @@ def repeated_notes(peaks, changes, half_h, index_scale):
             repeats.append(p)
 
     return repeats
+
+def octave_correction(frequencies, wideband):
+
+    corrected = []
+    for (index,f) in enumerate(frequencies):
+
+        if f == 0:
+            corrected.append(0)
+            continue
+
+        i = 2
+        current_max = f
+        while f*i < wideband.shape[1]/2:
+            if wideband[index][f*i] > wideband[index][current_max]:
+                current_max = f*i
+            i += 1
+
+        corrected.append(current_max)
+
+    return corrected
