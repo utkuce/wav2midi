@@ -11,13 +11,12 @@ To run, the following must be installed
   - [Python3] <sup>[2]</sup> 
 
  1. If CUDA is not installed it will fallback to OPENCL or CPU
- 2. Not required for standalone version
 
  Make sure that the CUDA and Arrayfire Environment Variables are set correctly
 
 ## Usage
 
-`mylib.dll` must be present in order for it to work. If it is not, first build the [Rust] source as a dynamic library with the following:
+First build the [Rust] source as a dynamic library to create `mylib.dll` with the following:
 ```
 $ cargo build
 ```
@@ -26,9 +25,12 @@ then, to analyze a file:
 $ analyze.py [-h] -f FILE_NAME [-w WINDOW] [-p HIGHPASS] [-r HPS_RATE]
           [-o ONSET_WINDOW] [-c THRESHOLD_CONSTANT] [-i] [-n]
 ```
-Replace `analyze.py` with `analyze` for the standalone version
 
-## Standalone
+OR
+
+```interface.py``` provides a GUI
+
+## Standalone (CLI only)
 
 ```
 $ make
