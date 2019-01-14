@@ -30,6 +30,8 @@ OR
 
 ```interface.py``` provides a GUI
 
+![gui](https://raw.githubusercontent.com/utkuce/wav2midi/master/interface.png)
+
 ## Standalone (CLI only)
 
 ```
