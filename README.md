@@ -10,17 +10,28 @@ To run, the following must be installed
   - [CUDA Toolkit] <sup>[1]</sup> 
   - [Python3] <sup>[2]</sup> 
 
- 1. If CUDA is not installed it will fallback to OPENCL or CPU
+ 1. If CUDA is not installed it should fallback to OpenCL or CPU
+ 2. Required python packages:
+  
+  ```
+  pip install --user numpy PyQt5 pyqtgraph matplotlib
+  ```
 
  Make sure that the CUDA and Arrayfire Environment Variables are set correctly
 
-## Usage
+## Build
 
-First build the [Rust] source as a dynamic library to create `mylib.dll` with the following:
+First build the [Rust] source <sup>[1]</sup> as a dynamic library to create `mylib.dll` with the following:
+
 ```
-$ cargo build
+$ cargo +nightly build
 ```
-then, to analyze a file:
+
+ 1. Dependency `synthrs` requires nightly toolchain: 
+ ```
+ $ rustup install nightly
+ ```
+## Usage
 ```
 $ analyze.py [-h] -f FILE_NAME [-w WINDOW] [-p HIGHPASS] [-r HPS_RATE]
           [-o ONSET_WINDOW] [-c THRESHOLD_CONSTANT] [-i] [-n]
