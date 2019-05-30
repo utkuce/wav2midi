@@ -1,6 +1,6 @@
 # Audio Note Analysis
 
-Converts a monophonic wav file into MIDI
+Converts a monophonic wav file into a MIDI file. A more in depth explanation can be found [here](poster.png) 
 
 ## Requirements
 
@@ -41,7 +41,7 @@ OR
 
 ```interface.py``` provides a GUI
 
-![gui](https://raw.githubusercontent.com/utkuce/wav2midi/master/interface.png)
+![gui](interface.png)
 
 ## Standalone (CLI only)
 
