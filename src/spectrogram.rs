@@ -1,53 +1,61 @@
 extern crate apodize;
+extern crate num_complex;
 
 use arrayfire::*;
 use self::apodize::{hanning_iter};
+use self::num_complex::Complex;
 use std::f64;
+use std::process;
 
 type Column = Vec<f64>;
 type Spectrogram = Vec<Column>;
 
-pub fn get_spectrogram(audio_data : &Array, window_size: usize, step_size: usize) -> Array
+pub fn get_spectrogram(audio_data : &Array<f64>, window_size: usize, step_size: usize) -> Array<f64>
 {
     let array = stft(audio_data, window_size, step_size);
     complex_to_magnitude(&array)
 }
 
-pub fn complex_to_magnitude(stft: &Array) -> Array
+pub fn complex_to_magnitude(stft: &Array<Complex<f64>>) -> Array<f64>
 {
     let spect_len = stft.dims()[1];
-    let result = Array::new_empty(stft.dims(), DType::F64);
+    let result = Array::<f64>::new_empty(stft.dims());
 
     for index in 0..spect_len
     {
-        set_col(&result, &magnitude(&col(&stft, index)), index);
+        set_col(&result, &magnitude(&col(stft, index)), index);
     }
 
     return result;
 }
 
-pub fn complex_to_phase(stft: &Array) -> Array
+pub fn complex_to_phase(stft: &Array<Complex<f64>>) -> Array<f64>
 {
     let spect_len = stft.dims()[1];
-    let result = Array::new_empty(stft.dims(), DType::F64);    
+    let result = Array::<f64>::new_empty(stft.dims());    
 
     for index in 0..spect_len
     {
-        set_col(&result, &phase(&col(&stft, index)), index);
+        set_col(&result, &phase(&col(stft, index)), index);
     }
 
     return result;
 }
 
-pub fn stft(audio_data : &Array, window_size: usize, step_size: usize) -> Array
+pub fn stft(audio_data : &Array<f64>, window_size: usize, step_size: usize) -> Array<Complex<f64>>
 {
     let audio_len : usize = audio_data.elements();
 
+    if audio_len < window_size-step_size {
+        println!("Error: Window size is too large for the selected audio, stopping");
+        process::exit(1);
+    }
+
     let spect_len : u64 = (( audio_len-(window_size-step_size) ) / step_size) as u64;
-    let array = Array::new_empty(Dim4::new(&[window_size as u64, spect_len, 1,1]), DType::C64);
+    let array = Array::<Complex<f64>>::new_empty(Dim4::new(&[window_size as u64, spect_len, 1,1]));
 
     let hanning_len = Dim4::new(&[window_size as u64,1,1,1]);
-    let hanning = Array::new(&hanning_iter(window_size as usize).collect::<Vec<f64>>(), hanning_len);
+    let hanning = Array::<f64>::new(&hanning_iter(window_size as usize).collect::<Vec<f64>>(), hanning_len);
 
     for (index, start) in (0..audio_len-window_size).step_by(step_size).enumerate()
     {
@@ -62,7 +70,7 @@ pub fn stft(audio_data : &Array, window_size: usize, step_size: usize) -> Array
     return get_half(&array);
 }
 
-fn get_half(stft: &Array) -> Array
+fn get_half(stft: &Array<Complex<f64>>) -> Array<Complex<f64>>
 {
     let sequence0 = Seq::new(0, ((stft.dims()[0] as f32 / 2.).floor()-1.) as u32, 1);
     let sequence1 = Seq::new(0, (stft.dims()[1]-1) as u32, 1);    
@@ -73,18 +81,18 @@ fn get_half(stft: &Array) -> Array
     index_gen(&stft, idxr)
 }
 
-fn magnitude(col : &Array) -> Array
+fn magnitude(col : &Array<Complex<f64>>) -> Array<f64>
 {
     let magnitude = sqrt( &(pow(&real(&col),&2, true) * pow(&imag(&col),&2, true)) );
     floor(&log1p(&magnitude))
 }
 
-fn phase(col: &Array) -> Array
+fn phase(col: &Array<Complex<f64>>) -> Array<f64>
 {
     atan2(&imag(col), &real(col), true)
 }
 
-pub fn onset_detection(m: &Array, p: &Array) -> Vec<f64>
+pub fn onset_detection(m: &Array<f64>, p: &Array<f64>) -> Vec<f64>
 {
     let mut result : Vec<f64> = Vec::new();
 
@@ -107,14 +115,14 @@ pub fn onset_detection(m: &Array, p: &Array) -> Vec<f64>
     return v;
 }
 
-pub fn combine(narrowband : &Array, wideband : &Array) -> Array
+pub fn combine(narrowband : &Array<f64>, wideband : &Array<f64>) -> Array<f64>
 {
     let wd = wideband.dims();
     let narrow = resize(&narrowband, wd[0] as i64, wd[1] as i64, InterpType::BILINEAR);
     mul(wideband, &narrow, true)
 }
 
-pub fn harmonic_product_spectrum(combined : Array, rate : u32) -> Array
+pub fn harmonic_product_spectrum(combined : Array<f64>, rate : u32) -> Array<f64>
 {
     let sequence0 = Seq::new(0 as u32, ((combined.dims()[0] as f32 / rate as f32)-1.) as u32, 1);
     let sequence1 = Seq::new(0 as u32, (combined.dims()[1]-1) as u32, 1);
@@ -138,12 +146,12 @@ pub fn harmonic_product_spectrum(combined : Array, rate : u32) -> Array
     return log1p(&hps);
 }
 
-pub fn get_frequencies(spectrogram: &Array) -> Array
+pub fn get_frequencies(spectrogram: &Array<f64>) -> Array<u32>
 {
-    imax(&spectrogram, 0).1
+    imax(&spectrogram, 0).1 // imax returns a tuple, get the indexes array
 }
 
-pub fn to_host(spectrogram_af : &Array) -> Spectrogram
+pub fn to_host(spectrogram_af : &Array<f64>) -> Spectrogram
 {
     let window_size = spectrogram_af.dims()[0];
     let slice_len = window_size * spectrogram_af.dims()[1];

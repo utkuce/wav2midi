@@ -1,7 +1,7 @@
-#![feature(step_by)]
+//#![feature(step_by)]
 #![allow(dead_code)]
 #![allow(deprecated)]
-#![feature(use_extern_macros)]
+//#![feature(use_extern_macros)]
 
 extern crate hound;
 extern crate arrayfire;
@@ -28,13 +28,13 @@ pub struct FFI_Spectrogram {
 pub fn analyze(file_name: *const raw::c_char, window_size: raw::c_uint, highpass: raw::c_uint, 
                hps_rate: raw::c_uint) -> *const *const raw::c_void
 {
-    //println!("Active Backend: {}", arrayfire::get_active_backend());
+    println!("Active Backend: {}", arrayfire::get_active_backend());
     
     println!("reading file...");
     let name: String = unsafe{std::ffi::CStr::from_ptr(file_name)}.to_string_lossy().into_owned();
     let mut reader = hound::WavReader::open(name.clone()).unwrap();
 
-    //print_audio_details(&reader);
+    print_audio_details(&reader);
 
     let data : Vec<f64> = reader.samples::<i16>().map(|sample| sample.unwrap() as f64).collect();
     let mut data_af = Array::new(&data, Dim4::new(&[data.len() as u64,1,1,1])); 
@@ -95,7 +95,7 @@ fn to_ffi(s : &Vec<Vec<f64>>) -> *const raw::c_void
     Box::into_raw(Box::new(spect)) as *const raw::c_void
 }
 
-fn post_filter(spectrogram: &Array, above: usize, below: usize) -> Array
+fn post_filter(spectrogram: &Array<u64>, above: usize, below: usize) -> Array<u64>
 {
     let sequence0 = Seq::new(above as u32, below as u32, 1);
     let sequence1 = Seq::new(0, (spectrogram.dims()[1]-1) as u32, 1);
