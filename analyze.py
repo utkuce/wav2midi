@@ -42,9 +42,9 @@ args = vars(parser.parse_args())
 start_time = time.time()
 
 if os.name == 'nt': # windows
-    mylib = cdll.LoadLibrary('target/debug/mylib.dll')
+    mylib = cdll.LoadLibrary('target/debug/wav2midi.dll')
 else: # linux
-    mylib = cdll.LoadLibrary('target/debug/libmylib.so')
+    mylib = cdll.LoadLibrary('target/debug/libwav2midi.so')
 
 mylib.analyze.restype = c_void_p
 

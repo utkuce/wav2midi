@@ -1,10 +1,10 @@
 [package]
-name = "rust_test"
+name = "wav2midi"
 version = "0.1.0"
 authors = ["utku <utkuce@gmail.com>"]
 
 [lib]
-name = "mylib"
+name = "wav2midi"
 crate-type = ["dylib"]
 
 [dependencies]

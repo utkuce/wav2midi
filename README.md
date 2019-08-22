@@ -21,7 +21,7 @@ To run, the following must be installed
 
 ## Build
 
-First build the [Rust] source <sup>[1]</sup> as a dynamic library to create `mylib.dll` with the following:
+First build the [Rust] source <sup>[1]</sup> as a dynamic library to create `wav2midi.dll` with the following:
 
 ```
 $ cargo +nightly build
