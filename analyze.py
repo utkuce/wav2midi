@@ -2,6 +2,7 @@ from ctypes import cdll, c_void_p, c_double, c_uint, cast
 import argparse
 import time
 import internal_utility as iu
+import os
 
 parser = argparse.ArgumentParser(description='Converts a monophonic wav file into MIDI')
 
@@ -40,7 +41,11 @@ args = vars(parser.parse_args())
 
 start_time = time.time()
 
-mylib = cdll.LoadLibrary('target\debug\mylib.dll')
+if os.name == 'nt': # windows
+    mylib = cdll.LoadLibrary('target/debug/mylib.dll')
+else: # linux
+    mylib = cdll.LoadLibrary('target/debug/libmylib.so')
+
 mylib.analyze.restype = c_void_p
 
 results = mylib.analyze(args['file_name'].encode('UTF-8'), args['window'], 
