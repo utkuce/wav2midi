@@ -6,18 +6,16 @@ Converts a monophonic wav file into a MIDI file. A more in depth explanation can
 
 To run, the following must be installed 
 
-  - [Arrayfire Binaries] 
-  - [CUDA Toolkit] <sup>[1]</sup> 
-  - [Python3] <sup>[2]</sup> 
-
- 1. If CUDA is not installed it should fallback to OpenCL or CPU
- 2. Required python packages:
+  - [Arrayfire Binaries] ( Last tested with 3.6.2 )
+  - [CUDA Toolkit]
+    - If CUDA is not installed it should fallback to OpenCL or CPU
+  - [Python3]
+    - Required python packages:
+```
+pip install --user numpy PyQt5 pyqtgraph matplotlib
+```
   
-  ```
-  pip install --user numpy PyQt5 pyqtgraph matplotlib
-  ```
-
- Make sure that the CUDA and Arrayfire Environment Variables are set correctly
+ - Make sure that the CUDA and Arrayfire Environment Variables are set correctly
 
 ## Build
 
