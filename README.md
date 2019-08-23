@@ -1,6 +1,6 @@
 # Audio Note Analysis
 
-Converts a monophonic wav file into a MIDI file. A more in depth explanation can be found [here](poster.png) 
+Converts a monophonic wav file into a MIDI file. A more in depth explanation can be found [here](screenshots/poster.png) 
 
 ## Requirements
 
@@ -39,7 +39,7 @@ OR
 
 ```interface.py``` provides a GUI
 
-![gui](interface.png)
+![gui](screenshots/interface.png)
 
 ## Standalone (CLI only)
 
@@ -60,7 +60,7 @@ analyze.py -f testaudio/tetris_acoustic_guitar.wav -w 13 -p 215 -r 3 -o 7 -c 1.0
 analyze.py -f testaudio/tetris_violin.wav -w 13 -p 215 -r 6 -o 7 -c 1.02
 ```
 
-![spectrograms](spectrograms.png)
+![spectrograms](screenshots/spectrograms.png)
 
 [Arrayfire Binaries]: <https://arrayfire.com/download/>
 [CUDA Toolkit]: <https://developer.nvidia.com/cuda-toolkit>
