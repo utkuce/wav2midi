@@ -1,10 +1,6 @@
 target
-*.wav
 *.csv
 __pycache__
-br.bat
-testaudio
-*.mid
 build
 dist
 analyze.spec

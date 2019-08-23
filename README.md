@@ -49,6 +49,19 @@ $ make
 
 will create a standalone distributable folder if [Rust Toolchain][Rust] and [Python3] are installed. `SINGLE_FILE=1` flag will create a single executable file instead of a folder, but the execution will be slower as everytime files are unpacked into a temporary folder
 
+## Sample output example
+
+- testaudio/tetris_acoustic_guitar.wav → testaudio/tetris_acoustic_guitar.mid
+```
+analyze.py -f testaudio/tetris_acoustic_guitar.wav -w 13 -p 215 -r 3 -o 7 -c 1.03
+```
+- testaudio/tetris_violin.wav → testaudio/tetris_violin.mid
+```
+analyze.py -f testaudio/tetris_violin.wav -w 13 -p 215 -r 6 -o 7 -c 1.02
+```
+
+![spectrograms](spectrograms.png)
+
 [Arrayfire Binaries]: <https://arrayfire.com/download/>
 [CUDA Toolkit]: <https://developer.nvidia.com/cuda-toolkit>
 [Python3]: <https://www.python.org/downloads/>
