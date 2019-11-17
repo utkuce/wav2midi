@@ -326,7 +326,7 @@ def midiButton():
 
     from ctypes import cdll, c_void_p, c_double, c_uint, cast, c_char_p
 
-    mylib = cdll.LoadLibrary('target\debug\mylib.dll')
+    mylib = cdll.LoadLibrary('target\debug\wav2midi.dll')
 
     (frequencies, detection) = (graphs[4],  graphs[5])
     (peaks, threshold) = iu.peaks(detection, half_h, c)
